@@ -16,7 +16,9 @@ export default class Gym extends React.Component {
     };
   }
 
-  componentDidMount() {
+  async componentDidMount() {
+    await this.refresh();
+
     this.setState({ tracker: setInterval(this.refresh.bind(this), 10000) });
   }
 

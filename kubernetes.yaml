@@ -1,0 +1,57 @@
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: mongo
+spec:
+  selector:
+    module: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+  type: ClusterIP 
+
+---
+
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: mongo
+  labels:
+    module: mongo
+spec:
+  replicas: 1
+  serviceName: mongo
+  selector:
+    matchLabels:
+      module: mongo
+  template:
+    metadata:
+      labels:
+        module: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: mongo
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: mongo
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: default
+
+---

@@ -1,4 +1,7 @@
 
+echo Deploying database...
+call k ngym apply -f ./kubernetes.yaml
+
 echo Deploying api...
 cd api
 docker build -t docker.io/stephanzlatarev/norman-gym-api .

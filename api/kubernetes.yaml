@@ -1,0 +1,65 @@
+kind: Ingress
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: api
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+spec:
+  rules:
+    - host: ngym.ddns.net
+      http:
+        paths:
+          - backend:
+              service:
+                name: api
+                port:
+                  number: 80
+            path: /api
+            pathType: Prefix
+  tls:
+    - hosts:
+        - ngym.ddns.net
+      secretName: https
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: api
+spec:
+  selector:
+    module: api
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000 
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: api
+  labels:
+    module: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      module: api
+  template:
+    metadata:
+      labels:
+        module: api
+    spec:
+      containers:
+        - name: api
+          image: docker.io/stephanzlatarev/norman-gym-api
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          env:
+            - name: VERSION
+              value: "0"

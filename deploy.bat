@@ -9,6 +9,13 @@ docker push docker.io/stephanzlatarev/norman-gym-api
 call k ngym apply -f ./kubernetes.yaml
 cd ..
 
+echo Deploying trainer...
+cd trainer
+docker build -t docker.io/stephanzlatarev/norman-gym-trainer .
+docker push docker.io/stephanzlatarev/norman-gym-trainer
+call k ngym apply -f ./kubernetes.yaml
+cd ..
+
 echo Deploying web...
 cd web
 docker build -t docker.io/stephanzlatarev/norman-gym-web .

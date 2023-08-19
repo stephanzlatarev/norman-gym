@@ -6,24 +6,31 @@ const WIDTH = HEIGHT * HEIGHT;
 export default class Progress extends React.Component {
 
   render() {
-    const xstep = WIDTH / (this.props.size - 1);
+    if (!this.props.data) return null;
+
+    const xstep = WIDTH / (this.props.data.length - 1);
+    let key = 1;
+
+    const studyPoints = [];
+    const controlPoints = [];
+    let x = 0;
+    for (const point of this.props.data) {
+      studyPoints.push(x + "," + y(point.studyError));
+      controlPoints.push(x + "," + y(point.controlError));
+      x += xstep;
+    }
 
     const lines = [];
-    let key = 1;
-    for (const one of this.props.data) {
-      const points = [];
-      let x = 0;
-      for (const point of one.values) {
-        points.push(x + "," + y(point));
-        x += xstep;
-      }
-
-      lines.push(
-        <g key={ key++ } style={{ fill: "none", stroke: one.color, strokeWidth: 0.1, strokeDasharray: one.study ? null : "0.1,0.1" }}>
-          <polyline points={ points.join(" ")} />
-        </g>
-      );
-    }
+    lines.push(
+      <g key={ key++ } style={{ fill: "none", stroke: "black", strokeWidth: 0.1 }}>
+        <polyline points={ studyPoints.join(" ")} />
+      </g>
+    );
+    lines.push(
+      <g key={ key++ } style={{ fill: "none", stroke: "black", strokeWidth: 0.1, strokeDasharray: "0.1,0.1" }}>
+        <polyline points={ controlPoints.join(" ")} />
+      </g>
+    );
 
     const grid = [];
     let zeroes = "";

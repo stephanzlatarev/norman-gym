@@ -1,12 +1,13 @@
 import fs from "fs";
 import * as tf from "@tensorflow/tfjs-node";
+import { log } from "./mongo.js";
 
 const BRAIN = "./brain.tf";
 
 const SAMPLES_COUNT = 10000;
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
-const LEARNING_EPOCHS = 10;
+const LEARNING_EPOCHS = 100;
 const LEARNING_BATCH = 1024;
 const HIDDEN_ACTIVATION_FUNCTION = "relu";
 const OUTPUT_ACTIVATION_FUNCTION = "sigmoid";
@@ -167,6 +168,8 @@ async function run(model, studySamples, controlSamples) {
 }
 
 function show(title, playbooks, stats) {
+  const error = { studyError: 0, controlError: 0 };
+
   for (const playbook of playbooks) {
     const sa = stats.studyAfter[playbook.name];
     const ps = sa.pass - stats.studyBefore[playbook.name].pass;
@@ -180,7 +183,12 @@ function show(title, playbooks, stats) {
       `${(sa.pass * 100).toFixed(2)}% (${pss}${(ps * 100).toFixed(2)}%) ${sa.error.toExponential(4)}`, "/",
       `${(ca.pass * 100).toFixed(2)}% (${pcs}${(pc * 100).toFixed(2)}%) ${ca.error.toExponential(4)}`
     );
+
+    error.studyError = sa.error;
+    error.controlError = ca.error;
   }
+
+  return error;
 }
 
 async function go() {
@@ -193,11 +201,12 @@ async function go() {
   let leaderModel = fs.existsSync(BRAIN) ? await load(BRAIN) : create();
   let leaderStudySamples = generateSamples(playbooks, share);
 
-  let wip = playbooks.length;
-  while (wip) {
+  let epoch = 0;
+  while (++epoch) {
     const leaderStats = await run(leaderModel, leaderStudySamples, controlSamples);
-    show("", playbooks, leaderStats);
+    const { studyError, controlError } = show("", playbooks, leaderStats);
 
+    await log(epoch, studyError, controlError);
     await save(leaderModel, BRAIN);
   }
 }

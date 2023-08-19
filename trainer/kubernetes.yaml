@@ -25,4 +25,4 @@ spec:
               cpu: "250m"
           env:
             - name: VERSION
-              value: "4"
+              value: "0"

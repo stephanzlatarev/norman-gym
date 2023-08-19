@@ -12,13 +12,12 @@ export default class Gym extends React.Component {
 
     this.state = {
       tracker: null,
-      data: [],
-      size: 12,
+      progress: [],
     };
   }
 
   componentDidMount() {
-    this.setState({ tracker: setInterval(this.refresh.bind(this), 1000) });
+    this.setState({ tracker: setInterval(this.refresh.bind(this), 10000) });
   }
 
   componentWillUnmount() {
@@ -36,7 +35,7 @@ export default class Gym extends React.Component {
   render() {
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress size={ this.state.size } data={ this.state.data } /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress data={ this.state.progress } /></Paper>
         <Paper elevation={3} sx={{ padding: "1rem" }}><Controls /></Paper>
       </Stack>
     );

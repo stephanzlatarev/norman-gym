@@ -6,8 +6,10 @@ const WIDTH = HEIGHT * HEIGHT;
 export default class Progress extends React.Component {
 
   render() {
-    if (!this.props.playbooks || !this.props.progress) return null;
+    if (!this.props.playbooks || !this.props.progress || !this.props.indicator) return null;
 
+    const y = (this.props.type === "log") ? logy : pery;
+    const tick = (this.props.type === "log") ? logt : pert;
     const xstep = WIDTH / (this.props.progress.length - 1);
     let key = 1;
 
@@ -19,8 +21,8 @@ export default class Progress extends React.Component {
           series[playbook] = { color: this.props.playbooks[playbook].color, study: [], control: [] };
         }
 
-        series[playbook].study.push(x + "," + y(point.study[playbook].error));
-        series[playbook].control.push(x + "," + y(point.control[playbook].error));
+        series[playbook].study.push(x + "," + y(point.study[playbook][this.props.indicator]));
+        series[playbook].control.push(x + "," + y(point.control[playbook][this.props.indicator]));
       }
 
       x += xstep;
@@ -42,11 +44,9 @@ export default class Progress extends React.Component {
     }
 
     const grid = [];
-    let zeroes = "";
     for (let y = 0; y <= HEIGHT; y++) {
       grid.push(<line key={ key++ } x1="0" y1={ y } x2={ WIDTH } y2={ y } />);
-      grid.push(<text key={ key++ } x="0" y={ y + 0.6 }>0.{ zeroes }X</text>);
-      zeroes += "0";
+      grid.push(<text key={ key++ } x="0" y={ y + 0.6 }>{ tick(y) }</text>);
     }
 
     return (
@@ -61,6 +61,18 @@ export default class Progress extends React.Component {
   }
 }
 
-function y(value) {
+function logy(value) {
   return Math.min(Math.abs(Math.log10(value)), 5);
+}
+
+function logt(y) {
+  return "0." + ("00000".substring(y)) + "X";
+}
+
+function pery(value) {
+  return 5 - Math.min(value * 5, 5);
+}
+
+function pert(y) {
+  return Math.floor(100 - y * 20) + "%";
 }

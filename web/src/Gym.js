@@ -35,10 +35,13 @@ export default class Gym extends React.Component {
   }
 
   render() {
+    const meta = playbooks(this.state.progress);
+
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress playbooks={ playbooks(this.state.progress) } progress={ this.state.progress } /></Paper>
         <Paper elevation={3} sx={{ padding: "1rem" }}><Controls /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress playbooks={ meta } progress={ this.state.progress } indicator="error" type="log" /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress playbooks={ meta } progress={ this.state.progress } indicator="pass" type="per" /></Paper>
       </Stack>
     );
   }

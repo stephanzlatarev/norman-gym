@@ -37,9 +37,26 @@ export default class Gym extends React.Component {
   render() {
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress data={ this.state.progress } /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress playbooks={ playbooks(this.state.progress) } progress={ this.state.progress } /></Paper>
         <Paper elevation={3} sx={{ padding: "1rem" }}><Controls /></Paper>
       </Stack>
     );
   }
+}
+
+// TODO: Replace with a playbooks record coming from the database
+const COLORS = ["black", "blue", "green", "orange", "red"];
+function playbooks(progress) {
+  const playbooks = {};
+  let index = 0;
+
+  for (const one of progress) {
+    for (const name in one.study) {
+      if (!playbooks[name]) {
+        playbooks[name] = { color: COLORS[index++] };
+      }
+    }
+  }
+
+  return playbooks;
 }

@@ -56,64 +56,6 @@ function generateSamples(playbooks, share) {
   };
 }
 
-function error(samples, predictions) {
-  const result = {};
-  const show = {};
-
-  for (let i = 0; i < predictions.length; i++) {
-    const playbook = samples.source[i];
-
-    let error = 0;
-    for (let j = 0; j < predictions[i].length; j++) {
-      error = Math.max(error, Math.abs(samples.output[i][j] - predictions[i][j]));
-    }
-
-    let stats = result[playbook];
-    if (!stats) {
-      stats = { share: 0, error: 0, pass: 0, fail: 0, count: 0 };
-      result[playbook] = stats;
-    }
-    stats.count++;
-    stats.error += error;
-    if (error < 0.01) {
-      stats.pass++;
-    } else if (error > 0.99) {
-      stats.fail++;
-    }
-
-    if (!show[playbook]) show[playbook] = { error: -Infinity };
-    if (error > show[playbook].error) {
-      const off = [];
-      let worstOff = 0;
-      let worstSpot = 0;
-      for (let j = 0; j < predictions[i].length; j++) {
-        off[j] = Math.abs(samples.output[i][j] - predictions[i][j]);
-        if (off[j] > worstOff) {
-          worstOff = off[j];
-          worstSpot = j;
-        }
-      }
-      show[playbook] = { error: error, input: samples.input[i], output: samples.output[i], prediction: predictions[i], off: off, spot: worstSpot }
-    }
-  }
-
-  let errorSum = 0;
-  let errorCount = 0;
-  for (const playbook in result) {
-    const stats = result[playbook];
-    stats.pass /= stats.count;
-    stats.error /= stats.count;
-    stats.share = stats.count / predictions.length;
-
-    errorSum += stats.error;
-    errorCount++;
-  }
-
-  result.error = errorCount ? errorSum / errorCount : Infinity;
-
-  return result;
-}
-
 function create() {
   const model = tf.sequential();
   model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE, activation: HIDDEN_ACTIVATION_FUNCTION }));
@@ -145,6 +87,41 @@ async function save(model, file) {
   });
 }
 
+function compare(samples, predictions) {
+  const result = {};
+
+  for (let i = 0; i < predictions.length; i++) {
+    const playbook = samples.source[i];
+
+    let error = 0;
+    for (let j = 0; j < predictions[i].length; j++) {
+      error = Math.max(error, Math.abs(samples.output[i][j] - predictions[i][j]));
+    }
+
+    let stats = result[playbook];
+    if (!stats) {
+      stats = { share: 0, error: 0, pass: 0, fail: 0, count: 0 };
+      result[playbook] = stats;
+    }
+    stats.count++;
+    stats.error += error;
+    if (error < 0.01) {
+      stats.pass++;
+    } else if (error > 0.99) {
+      stats.fail++;
+    }
+  }
+
+  for (const playbook in result) {
+    const stats = result[playbook];
+    stats.pass /= stats.count;
+    stats.error /= stats.count;
+    stats.share = stats.count / predictions.length;
+  }
+
+  return result;
+}
+
 async function run(model, studySamples, controlSamples) {
   tf.engine().startScope();
 
@@ -154,41 +131,14 @@ async function run(model, studySamples, controlSamples) {
   const inputStudySamples = tf.tensor(studySamples.input, [studySamplesCount, studySamples.inputSize]);
   const outputStudySamples = tf.tensor(studySamples.output, [studySamplesCount, studySamples.outputSize]);
 
-  const controlBefore = error(controlSamples, await model.predict(inputControlSamples, { batchSize: controlSamplesCount }).array());
-  const studyBefore = error(studySamples, await model.predict(inputStudySamples, { batchSize: studySamplesCount }).array());
-
   await model.fit(inputStudySamples, outputStudySamples, { epochs: LEARNING_EPOCHS, batchSize: LEARNING_BATCH, shuffle: true, verbose: false });
 
-  const controlAfter = error(controlSamples, await model.predict(inputControlSamples, { batchSize: controlSamplesCount }).array());
-  const studyAfter = error(studySamples, await model.predict(inputStudySamples, { batchSize: studySamplesCount }).array(), "show");
+  const controlStats = compare(controlSamples, await model.predict(inputControlSamples, { batchSize: controlSamplesCount }).array());
+  const studyStats = compare(studySamples, await model.predict(inputStudySamples, { batchSize: studySamplesCount }).array());
 
   tf.engine().endScope();
 
-  return { studyBefore: studyBefore, studyAfter: studyAfter, controlBefore: controlBefore, controlAfter: controlAfter, error: controlAfter.error };
-}
-
-function show(title, playbooks, stats) {
-  const error = { studyError: 0, controlError: 0 };
-
-  for (const playbook of playbooks) {
-    const sa = stats.studyAfter[playbook.name];
-    const ps = sa.pass - stats.studyBefore[playbook.name].pass;
-    const pss = (ps >= 0) ? (ps !== 0) ? "+" : " " : "";
-    const share = sa.share;
-    const ca = stats.controlAfter[playbook.name];
-    const pc = ca.pass - stats.controlBefore[playbook.name].pass;
-    const pcs = (pc >= 0) ? (pc !== 0) ? "+" : " " : "";
-
-    console.log(`[${title} ${Math.round(share * 100)}%]`, playbook.name, "\t",
-      `${(sa.pass * 100).toFixed(2)}% (${pss}${(ps * 100).toFixed(2)}%) ${sa.error.toExponential(4)}`, "/",
-      `${(ca.pass * 100).toFixed(2)}% (${pcs}${(pc * 100).toFixed(2)}%) ${ca.error.toExponential(4)}`
-    );
-
-    error.studyError = sa.error;
-    error.controlError = ca.error;
-  }
-
-  return error;
+  return { studyStats: studyStats, controlStats: controlStats };
 }
 
 async function go() {
@@ -198,16 +148,20 @@ async function go() {
   const share = {};
   for (const playbook of playbooks) share[playbook.name] = 1 / playbooks.length;
 
-  let leaderModel = fs.existsSync(BRAIN) ? await load(BRAIN) : create();
-  let leaderStudySamples = generateSamples(playbooks, share);
+  let model = fs.existsSync(BRAIN) ? await load(BRAIN) : create();
+  let studySamples = generateSamples(playbooks, share);
 
   let epoch = 0;
   while (++epoch) {
-    const leaderStats = await run(leaderModel, leaderStudySamples, controlSamples);
-    const { studyError, controlError } = show("", playbooks, leaderStats);
+    const { studyStats, controlStats } = await run(model, studySamples, controlSamples);
 
-    await log(epoch, studyError, controlError);
-    await save(leaderModel, BRAIN);
+    await log({
+      epoch: epoch,
+      study: studyStats,
+      control: controlStats,
+    });
+
+    await save(model, BRAIN);
   }
 }
 

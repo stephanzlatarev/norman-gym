@@ -14,9 +14,8 @@ async function connect() {
   return db;
 }
 
-export async function getProgress() {
+export async function list(collection) {
   const db = await connect();
-  const records = db.collection("progress");
 
-  return await records.find({}).toArray();
+  return await db.collection(collection).find({}).toArray();
 }

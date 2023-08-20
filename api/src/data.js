@@ -1,10 +1,10 @@
 import { sendResponse } from "./http.js";
-import { getProgress } from "./mongo.js";
+import { list } from "./mongo.js";
 
 export async function read(_, response) {
-  const progress = await getProgress();
   const data = {
-    progress: progress,
+    progress: await list("progress"),
+    samples: await list("samples"),
   };
 
   return sendResponse(response, data);

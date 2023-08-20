@@ -92,6 +92,71 @@ function compare(samples, predictions) {
   return result;
 }
 
+function findWorstSample(samples, predictions) {
+  let worstError = -Infinity;
+  let worstIndex = -1;
+  let worstSpot = -1;
+
+  for (let i = 0; i < predictions.length; i++) {
+    let error = -Infinity;
+    let spot = -1;
+
+    for (let j = 0; j < predictions[i].length; j++) {
+      const spotError = Math.abs(samples.output[i][j] - predictions[i][j]);
+
+      if (spotError > error) {
+        error = spotError;
+        spot = j;
+      }
+    }
+
+    if (error > worstError) {
+      worstError = error;
+      worstIndex = i;
+      worstSpot = spot;
+    }
+  }
+
+  return {
+    playbook: samples.source[worstIndex],
+    input: samples.input[worstIndex],
+    output: samples.output[worstIndex],
+    prediction: predictions[worstIndex],
+    spot: worstSpot,
+  };
+}
+
+function findOppositeSample(sample, samples, predictions) {
+  const spot = sample.spot;
+  const expectation = sample.output[spot];
+
+  let worstError = -Infinity;
+  let worstIndex = -1;
+
+  for (let i = 0; i < predictions.length; i++) {
+    const output = samples.output[i][spot];
+    const prediction = predictions[i][spot];
+
+    if ((prediction < expectation) && (prediction < output)) continue;
+    if ((prediction > expectation) && (prediction > output)) continue;
+
+    const error = Math.abs(output - prediction);
+
+    if (error > worstError) {
+      worstError = error;
+      worstIndex = i;
+    }
+  }
+
+  return {
+    playbook: samples.source[worstIndex],
+    input: samples.input[worstIndex],
+    output: samples.output[worstIndex],
+    prediction: predictions[worstIndex],
+    spot: spot,
+  };
+}
+
 async function run(model, studySamples, controlSamples) {
   tf.engine().startScope();
 
@@ -103,12 +168,22 @@ async function run(model, studySamples, controlSamples) {
 
   await model.fit(inputStudySamples, outputStudySamples, { epochs: LEARNING_EPOCHS, batchSize: LEARNING_BATCH, shuffle: true, verbose: false });
 
-  const controlStats = compare(controlSamples, await model.predict(inputControlSamples, { batchSize: controlSamplesCount }).array());
-  const studyStats = compare(studySamples, await model.predict(inputStudySamples, { batchSize: studySamplesCount }).array());
+  const controlPredictions = await model.predict(inputControlSamples, { batchSize: controlSamplesCount }).array();
+  const controlStats = compare(controlSamples, controlPredictions);
+
+  const studyPredictions = await model.predict(inputStudySamples, { batchSize: studySamplesCount }).array();
+  const studyStats = compare(studySamples, studyPredictions);
+
+  const worstSample = findWorstSample(studySamples, studyPredictions);
+  const worstSampleOpposite = findOppositeSample(worstSample, studySamples, studyPredictions);
 
   tf.engine().endScope();
 
-  return { studyStats: studyStats, controlStats: controlStats };
+  return {
+    controlStats: controlStats,
+    studyStats: studyStats,
+    worstSample: { sample: worstSample, opposite: worstSampleOpposite },
+  };
 }
 
 function shouldRegenerateSamples(studyStats, controlSamples) {
@@ -131,14 +206,12 @@ async function go() {
 
   let epoch = 0;
   while (++epoch) {
-    const { studyStats, controlStats } = await run(model, studySamples, controlSamples);
+    const { studyStats, controlStats, worstSample } = await run(model, studySamples, controlSamples);
 
-    await log({
-      brain: BRAIN,
-      epoch: epoch,
-      study: studyStats,
-      control: controlStats,
-    });
+    await log(BRAIN,
+      { epoch: epoch, study: studyStats, control: controlStats },
+      { worst: worstSample }
+    );
 
     await save(BRAIN, model);
 

@@ -14,24 +14,25 @@ async function connect() {
   return db;
 }
 
-export async function log(record) {
+export async function log(brain, progress, samples) {
   const db = await connect();
-  const records = db.collection("progress");
 
-  await records.insertOne(record);
+  progress.brain = brain;
+  await db.collection("progress").insertOne(progress);
+
+  samples.brain = brain;
+  await db.collection("samples").findOneAndReplace({ brain: brain }, samples, { upsert: true });
 }
 
 export async function loadBrain(name) {
   const db = await connect();
-  const records = db.collection("brain");
-  const record = await records.findOne({ name: name });
+  const record = await db.collection("brain").findOne({ name: name });
 
   return record ? record.brain : null;
 }
 
 export async function saveBrain(name, brain) {
   const db = await connect();
-  const records = db.collection("brain");
 
-  await records.findOneAndReplace({ name: name }, { name: name, brain: brain }, { upsert: true });
+  await db.collection("brain").findOneAndReplace({ name: name }, { name: name, brain: brain }, { upsert: true });
 }

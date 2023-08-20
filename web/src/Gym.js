@@ -1,6 +1,9 @@
 import React from "react";
+import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
 import Api from "./Api";
 import Controls from "./Controls";
 import Progress from "./Progress";
@@ -13,6 +16,7 @@ export default class Gym extends React.Component {
     this.state = {
       tracker: null,
       progress: [],
+      progressTab: 0,
     };
   }
 
@@ -24,6 +28,10 @@ export default class Gym extends React.Component {
 
   componentWillUnmount() {
     if (this.state.tracker) clearInterval(this.state.tracker);
+  }
+
+  changeProgressTab(_, newValue) {
+    this.setState({ progressTab: newValue });
   }
 
   async refresh() {
@@ -39,10 +47,21 @@ export default class Gym extends React.Component {
 
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
+
         <Paper elevation={3} sx={{ padding: "1rem" }}><Controls /></Paper>
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress playbooks={ meta } progress={ this.state.progress } indicator="error" type="log" /></Paper>
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Progress playbooks={ meta } progress={ this.state.progress } indicator="pass" type="per" /></Paper>
-      </Stack>
+
+        <Paper elevation={3} sx={{ padding: "1rem" }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={ this.state.progressTab } onChange={ this.changeProgressTab.bind(this) }>
+              <Tab label="Pass" />
+              <Tab label="Error" />
+            </Tabs>
+          </Box>
+          <Progress visible={ this.state.progressTab === 0 } playbooks={ meta } progress={ this.state.progress } indicator="pass" type="per" />
+          <Progress visible={ this.state.progressTab === 1 } playbooks={ meta } progress={ this.state.progress } indicator="error" type="log" />
+        </Paper>
+
+        </Stack>
     );
   }
 }

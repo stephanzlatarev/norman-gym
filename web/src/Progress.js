@@ -6,6 +6,7 @@ const WIDTH = HEIGHT * HEIGHT;
 export default class Progress extends React.Component {
 
   render() {
+    if (!this.props.visible) return null;
     if (!this.props.playbooks || !this.props.progress || !this.props.indicator) return null;
 
     const y = (this.props.type === "log") ? logy : pery;

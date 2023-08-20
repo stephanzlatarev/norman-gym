@@ -66,7 +66,7 @@ function logy(value) {
 }
 
 function logt(y) {
-  return "0." + ("00000".substring(y)) + "X";
+  return "0." + ("00000".substring(5 - y)) + "X";
 }
 
 function pery(value) {

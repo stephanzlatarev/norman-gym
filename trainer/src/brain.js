@@ -28,7 +28,7 @@ export async function load(name) {
 
   const model = await tf.loadLayersModel({
     load: function() {
-      return { ...record, weightData: record.weightData.buffer };
+      return { ...record, weightData: new Uint8Array(record.weightData).buffer };
     }
   });
 
@@ -43,7 +43,7 @@ export async function load(name) {
 export async function save(name, model) {
   await model.save({
     save: function(model) {
-      saveBrain(name, { ...model, weightData: new Uint8Array(model.weightData) });
+      saveBrain(name, { ...model, weightData: Array.from(new Uint8Array(model.weightData)) });
     }
   });
 }

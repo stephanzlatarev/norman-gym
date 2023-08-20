@@ -141,6 +141,14 @@ async function run(model, studySamples, controlSamples) {
   return { studyStats: studyStats, controlStats: controlStats };
 }
 
+function shouldRegenerateSamples(stats) {
+  for (const playbook in stats) {
+    if (stats[playbook].pass >= 1) return true;
+  }
+
+  return false;
+}
+
 async function go() {
   const playbooks = await loadPlaybooks();
   let controlSamples = generateSamples(playbooks);
@@ -162,6 +170,12 @@ async function go() {
     });
 
     await save(model, BRAIN);
+
+    if (shouldRegenerateSamples(studyStats)) {
+      // TODO: Update playbook share
+      controlSamples = generateSamples(playbooks);
+      studySamples = generateSamples(playbooks, share);
+    }
   }
 }
 

@@ -66,11 +66,15 @@ function compare(samples, predictions) {
 
     let stats = result[playbook];
     if (!stats) {
-      stats = { share: 0, error: 0, pass: 0, fail: 0, count: 0 };
+      stats = { share: 0, error: 0, errorMax: -Infinity, errorMin: Infinity, pass: 0, fail: 0, count: 0 };
       result[playbook] = stats;
     }
+
     stats.count++;
     stats.error += error;
+    stats.errorMax = Math.max(stats.errorMax, error);
+    stats.errorMin = Math.min(stats.errorMin, error);
+
     if (error < 0.01) {
       stats.pass++;
     } else if (error > 0.99) {
@@ -107,9 +111,9 @@ async function run(model, studySamples, controlSamples) {
   return { studyStats: studyStats, controlStats: controlStats };
 }
 
-function shouldRegenerateSamples(stats) {
-  for (const playbook in stats) {
-    if (stats[playbook].pass >= 1) return true;
+function shouldRegenerateSamples(studyStats, controlSamples) {
+  for (const playbook in studyStats) {
+    if ((studyStats[playbook].pass >= 1) || (studyStats[playbook].errorMax <= controlSamples[playbook].error)) return true;
   }
 
   return false;
@@ -130,6 +134,7 @@ async function go() {
     const { studyStats, controlStats } = await run(model, studySamples, controlSamples);
 
     await log({
+      brain: BRAIN,
       epoch: epoch,
       study: studyStats,
       control: controlStats,
@@ -137,7 +142,7 @@ async function go() {
 
     await save(BRAIN, model);
 
-    if (shouldRegenerateSamples(studyStats)) {
+    if (shouldRegenerateSamples(studyStats, controlStats)) {
       // TODO: Update playbook share
       controlSamples = generateSamples(playbooks);
       studySamples = generateSamples(playbooks, share);

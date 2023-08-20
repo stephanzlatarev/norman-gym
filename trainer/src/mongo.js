@@ -20,3 +20,18 @@ export async function log(record) {
 
   await records.insertOne(record);
 }
+
+export async function loadBrain(name) {
+  const db = await connect();
+  const records = db.collection("brain");
+  const record = await records.findOne({ name: name });
+
+  return record ? record.brain : null;
+}
+
+export async function saveBrain(name, brain) {
+  const db = await connect();
+  const records = db.collection("brain");
+
+  await records.findOneAndReplace({ name: name }, { name: name, brain: brain }, { upsert: true });
+}

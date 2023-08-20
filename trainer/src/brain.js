@@ -1,0 +1,49 @@
+import * as tf from "@tensorflow/tfjs-node";
+import { loadBrain, saveBrain } from "./mongo.js";
+
+const INPUT_SIZE = 400;
+const OUTPUT_SIZE = 100;
+const HIDDEN_ACTIVATION_FUNCTION = "relu";
+const OUTPUT_ACTIVATION_FUNCTION = "sigmoid";
+const OPTIMIZER_FUNCTION = "adam";
+const LOSS_FUNCTION = "meanSquaredError";
+
+function create() {
+  const model = tf.sequential();
+
+  model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE, activation: HIDDEN_ACTIVATION_FUNCTION }));
+  model.add(tf.layers.dense({ units: OUTPUT_SIZE, activation: OUTPUT_ACTIVATION_FUNCTION }));
+  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
+
+  console.log("Brain created:");
+  model.summary();
+
+  return model;
+}
+
+export async function load(name) {
+  const record = await loadBrain(name);
+
+  if (!record) return create();
+
+  const model = await tf.loadLayersModel({
+    load: function() {
+      return { ...record, weightData: record.weightData.buffer };
+    }
+  });
+
+  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
+
+  console.log("Brain loaded:");
+  model.summary();
+
+  return model;
+}
+
+export async function save(name, model) {
+  await model.save({
+    save: function(model) {
+      saveBrain(name, { ...model, weightData: new Uint8Array(model.weightData) });
+    }
+  });
+}

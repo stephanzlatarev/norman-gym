@@ -1,18 +1,15 @@
 import fs from "fs";
 import * as tf from "@tensorflow/tfjs-node";
+import { load, save } from "./brain.js";
 import { log } from "./mongo.js";
 
-const BRAIN = "./brain.tf";
+const BRAIN = "brain";
 
 const SAMPLES_COUNT = 10000;
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
 const LEARNING_EPOCHS = 100;
 const LEARNING_BATCH = 1024;
-const HIDDEN_ACTIVATION_FUNCTION = "relu";
-const OUTPUT_ACTIVATION_FUNCTION = "sigmoid";
-const OPTIMIZER_FUNCTION = "adam";
-const LOSS_FUNCTION = "meanSquaredError";
 
 async function loadPlaybooks() {
   const scripts = fs.readdirSync("./src/playbook/").filter(name => name.endsWith(".js"));
@@ -54,37 +51,6 @@ function generateSamples(playbooks, share) {
     output: output,
     outputSize: OUTPUT_SIZE,
   };
-}
-
-function create() {
-  const model = tf.sequential();
-  model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE, activation: HIDDEN_ACTIVATION_FUNCTION }));
-  model.add(tf.layers.dense({ units: OUTPUT_SIZE, activation: OUTPUT_ACTIVATION_FUNCTION }));
-  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
-  model.summary();
-  return model;
-}
-
-async function load(file) {
-  const model = await tf.loadLayersModel({
-    load: function() {
-      const model = JSON.parse(fs.readFileSync(file));
-      model.weightData = new Uint8Array(model.weightData).buffer;
-      return model;
-    }
-  });
-  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
-  return model;
-}
-
-async function save(model, file) {
-  await model.save({
-    save: function(model) {
-      const copy = {...model, weightData: []};
-      copy.weightData = Array.from(new Uint8Array(model.weightData));
-      fs.writeFileSync(file, JSON.stringify(copy));
-    }
-  });
 }
 
 function compare(samples, predictions) {
@@ -156,7 +122,7 @@ async function go() {
   const share = {};
   for (const playbook of playbooks) share[playbook.name] = 1 / playbooks.length;
 
-  let model = fs.existsSync(BRAIN) ? await load(BRAIN) : create();
+  let model = await load(BRAIN);
   let studySamples = generateSamples(playbooks, share);
 
   let epoch = 0;
@@ -169,7 +135,7 @@ async function go() {
       control: controlStats,
     });
 
-    await save(model, BRAIN);
+    await save(BRAIN, model);
 
     if (shouldRegenerateSamples(studyStats)) {
       // TODO: Update playbook share

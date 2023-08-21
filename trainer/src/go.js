@@ -5,11 +5,10 @@ import { log } from "./mongo.js";
 
 const BRAIN = "brain";
 
-const SAMPLES_COUNT = 10000;
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
 const LEARNING_EPOCHS = 100;
-const LEARNING_BATCH = 1024;
+const LEARNING_BATCH = 10000;
 
 async function loadPlaybooks() {
   const scripts = fs.readdirSync("./src/playbook/").filter(name => name.endsWith(".js"));
@@ -33,7 +32,7 @@ function generateSamples(playbooks, share) {
   const output = [];
 
   for (const playbook of playbooks) {
-    const count = SAMPLES_COUNT * (share ? share[playbook.name] : 1 / playbooks.length);
+    const count = LEARNING_BATCH * (share ? share[playbook.name] : 1 / playbooks.length);
 
     for (let i = 0; i < count; i++) {
       const sample = playbook.sample();

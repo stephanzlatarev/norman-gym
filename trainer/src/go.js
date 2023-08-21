@@ -128,19 +128,23 @@ function findWorstSample(samples, predictions) {
 
 function findOppositeSample(sample, samples, predictions) {
   const spot = sample.spot;
-  const expectation = sample.output[spot];
+  const sampleExpectated = sample.output[spot];
+  const samplePredicted = sample.prediction[spot];
 
   let worstError = -Infinity;
   let worstIndex = -1;
 
   for (let i = 0; i < predictions.length; i++) {
-    const output = samples.output[i][spot];
-    const prediction = predictions[i][spot];
+    const thisExpected = samples.output[i][spot];
+    const thisPredicted = predictions[i][spot];
 
-    if ((prediction < expectation) && (prediction < output)) continue;
-    if ((prediction > expectation) && (prediction > output)) continue;
+    if ((samplePredicted < sampleExpectated) && (samplePredicted < thisExpected)) continue;
+    if ((samplePredicted > sampleExpectated) && (samplePredicted > thisExpected)) continue;
 
-    const error = Math.abs(output - prediction);
+    if ((thisPredicted < sampleExpectated) && (thisPredicted < thisExpected)) continue;
+    if ((thisPredicted > sampleExpectated) && (thisPredicted > thisExpected)) continue;
+
+    const error = Math.abs(thisExpected - thisPredicted);
 
     if (error > worstError) {
       worstError = error;

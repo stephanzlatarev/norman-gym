@@ -7,6 +7,7 @@ import Tabs from "@mui/material/Tabs";
 import Api from "./Api";
 import Controls from "./Controls";
 import Progress from "./Progress";
+import Sample from "./Sample";
 
 export default class Gym extends React.Component {
 
@@ -17,6 +18,8 @@ export default class Gym extends React.Component {
       tracker: null,
       progress: [],
       progressTab: 0,
+      samples: [],
+      samplesTab: 0,
     };
   }
 
@@ -34,6 +37,10 @@ export default class Gym extends React.Component {
     this.setState({ progressTab: newValue });
   }
 
+  changeSamplesTab(_, newValue) {
+    this.setState({ samplesTab: newValue });
+  }
+
   async refresh() {
     const data = await Api.get("");
 
@@ -44,6 +51,8 @@ export default class Gym extends React.Component {
 
   render() {
     const meta = playbooks(this.state.progress);
+    const worstSample = this.state.samples[0] ? this.state.samples[0].worst.sample : null;
+    const worstSampleOpposite = worstSample ? this.state.samples[0].worst.opposite : null;
 
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
@@ -59,6 +68,24 @@ export default class Gym extends React.Component {
           </Box>
           <Progress visible={ this.state.progressTab === 0 } playbooks={ meta } progress={ this.state.progress } indicator="pass" type="per" />
           <Progress visible={ this.state.progressTab === 1 } playbooks={ meta } progress={ this.state.progress } indicator="error" type="log" />
+        </Paper>
+
+        <Paper elevation={3} sx={{ padding: "1rem" }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={ this.state.samplesTab } onChange={ this.changeSamplesTab.bind(this) }>
+              <Tab label="Worst" />
+            </Tabs>
+          </Box>
+          <Sample visible={ this.state.samplesTab === 0 } sample={ worstSample } />
+        </Paper>
+
+        <Paper elevation={3} sx={{ padding: "1rem" }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={ 0 }>
+              <Tab label="Opposite" />
+            </Tabs>
+          </Box>
+          <Sample sample={ worstSampleOpposite } />
         </Paper>
 
         </Stack>

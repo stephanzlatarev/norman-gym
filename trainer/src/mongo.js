@@ -25,6 +25,9 @@ export async function log(brain, progress, samples) {
 
   samples.brain = brain;
   await db.collection("samples").findOneAndReplace({ brain: brain }, samples, { upsert: true });
+
+  const rank = { brain: brain, error: progress.error, pass: progress.pass };
+  await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 
 export async function loadBrain(name) {

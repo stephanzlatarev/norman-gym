@@ -6,6 +6,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Api from "./Api";
 import Controls from "./Controls";
+import Leaderboard from "./Leaderboard";
 import Progress from "./Progress";
 import Sample from "./Sample";
 
@@ -16,6 +17,8 @@ export default class Gym extends React.Component {
 
     this.state = {
       tracker: null,
+      rank: [],
+      brain: "brain",
       progress: [],
       progressTab: 0,
       samples: [],
@@ -33,6 +36,11 @@ export default class Gym extends React.Component {
     if (this.state.tracker) clearInterval(this.state.tracker);
   }
 
+  selectBrain(brain) {
+    this.setState({ brain: brain });
+    this.refresh();
+  }
+
   changeProgressTab(_, newValue) {
     this.setState({ progressTab: newValue });
   }
@@ -42,10 +50,17 @@ export default class Gym extends React.Component {
   }
 
   async refresh() {
-    const data = await Api.get("");
+    const rank = await Api.get("rank");
 
-    if (data) {
-      this.setState(data);
+    if (rank) {
+      rank.sort((a, b) => (a.error - b.error));
+      this.setState({ rank: rank });
+    }
+
+    const progress = await Api.get("progress", this.state.brain);
+
+    if (progress) {
+      this.setState({ progress: progress.progress, samples: progress.samples });
     }
   }
 
@@ -58,6 +73,10 @@ export default class Gym extends React.Component {
       <Stack spacing={2} direction="row" flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}><Controls /></Paper>
+
+        <Paper elevation={3} sx={{ padding: "1rem" }}>
+          <Leaderboard rank={ this.state.rank } selected={ this.state.brain } onSelect={ this.selectBrain.bind(this) } />
+        </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

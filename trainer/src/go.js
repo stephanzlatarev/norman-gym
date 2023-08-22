@@ -3,7 +3,7 @@ import * as tf from "@tensorflow/tfjs-node";
 import { load, save } from "./brain.js";
 import { log } from "./mongo.js";
 
-const BRAIN = "brain";
+const BRAIN = process.env.BRAIN;
 
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
@@ -197,6 +197,16 @@ function shouldRegenerateSamples(studyStats, controlSamples) {
   return false;
 }
 
+function overall(stats, field) {
+  let error = 0;
+
+  for (const playbook in stats) {
+    error += stats[playbook][field] * stats[playbook].share;
+  }
+
+  return error;
+}
+
 async function go() {
   const playbooks = await loadPlaybooks();
   let controlSamples = generateSamples(playbooks);
@@ -212,7 +222,7 @@ async function go() {
     const { studyStats, controlStats, worstSample } = await run(model, studySamples, controlSamples);
 
     await log(BRAIN,
-      { epoch: epoch, study: studyStats, control: controlStats },
+      { epoch: epoch, study: studyStats, control: controlStats, error: overall(controlStats, "error"), pass: overall(controlStats, "pass") },
       { worst: worstSample }
     );
 

@@ -14,8 +14,8 @@ async function connect() {
   return db;
 }
 
-export async function list(collection) {
+export async function list(collection, filter) {
   const db = await connect();
 
-  return await db.collection(collection).find({}).toArray();
+  return await db.collection(collection).find(filter).toArray();
 }

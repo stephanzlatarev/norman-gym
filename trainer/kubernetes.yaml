@@ -21,8 +21,74 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              memory: "2Gi"
+              memory: "1Gi"
               cpu: "250m"
           env:
+            - name: BRAIN
+              value: "brain"
+            - name: VERSION
+              value: "0"
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: trainer-brainiac
+  labels:
+    module: trainer-brainiac
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      module: trainer-brainiac
+  template:
+    metadata:
+      labels:
+        module: trainer-brainiac
+    spec:
+      containers:
+        - name: trainer
+          image: docker.io/stephanzlatarev/norman-gym-trainer
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+          env:
+            - name: BRAIN
+              value: "brainiac"
+            - name: VERSION
+              value: "0"
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: trainer-pinky
+  labels:
+    module: trainer-pinky
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      module: trainer-pinky
+  template:
+    metadata:
+      labels:
+        module: trainer-pinky
+    spec:
+      containers:
+        - name: trainer
+          image: docker.io/stephanzlatarev/norman-gym-trainer
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+          env:
+            - name: BRAIN
+              value: "pinky"
             - name: VERSION
               value: "0"

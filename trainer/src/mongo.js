@@ -9,6 +9,8 @@ async function connect() {
     await client.connect();
 
     db = client.db("gym");
+
+    db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 * 8 } )
   }
 
   return db;
@@ -18,6 +20,7 @@ export async function log(brain, progress, samples) {
   const db = await connect();
 
   progress.brain = brain;
+  progress.time = new Date();
   await db.collection("progress").insertOne(progress);
 
   samples.brain = brain;

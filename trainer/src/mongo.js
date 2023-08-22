@@ -30,6 +30,15 @@ export async function log(brain, progress, samples) {
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 
+export async function isLeader(brain) {
+  const db = await connect();
+  const leaderboard = await db.collection("rank").find({}).toArray();
+
+  leaderboard.sort((a, b) => (a.error - b.error));
+
+  return (leaderboard.length && (leaderboard[0].brain === brain));
+}
+
 export async function loadBrain(name) {
   const db = await connect();
   const record = await db.collection("brain").findOne({ name: name });

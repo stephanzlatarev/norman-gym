@@ -1,7 +1,7 @@
 import fs from "fs";
 import * as tf from "@tensorflow/tfjs-node";
 import { load, save } from "./brain.js";
-import { log } from "./mongo.js";
+import { log, isLeader } from "./mongo.js";
 
 const BRAIN = process.env.BRAIN;
 
@@ -189,11 +189,19 @@ async function run(model, studySamples, controlSamples) {
   };
 }
 
-function shouldRegenerateSamples(studyStats, controlSamples) {
+async function shouldRegenerateSamples(studyStats, controlSamples, controlError) {
+  // Check if the brain has studied the samples perfectly
   for (const playbook in studyStats) {
     if ((studyStats[playbook].pass >= 1) || (studyStats[playbook].errorMax <= controlSamples[playbook].error)) return true;
   }
 
+  // Check if the brain is a challenger on the leaderboard and has studied the samples halfway
+  const studyError = overall(studyStats, "error");
+  if ((studyError + studyError < controlError) && !(await isLeader(BRAIN))) {
+    return true;
+  }
+
+  // Otherwise keep on studying the same samples
   return false;
 }
 
@@ -220,15 +228,17 @@ async function go() {
   let epoch = 0;
   while (++epoch) {
     const { studyStats, controlStats, worstSample } = await run(model, studySamples, controlSamples);
+    const controlError = overall(controlStats, "error");
+    const controlPass = overall(controlStats, "pass");
 
     await log(BRAIN,
-      { epoch: epoch, study: studyStats, control: controlStats, error: overall(controlStats, "error"), pass: overall(controlStats, "pass") },
+      { epoch: epoch, study: studyStats, control: controlStats, error: controlError, pass: controlPass },
       { worst: worstSample }
     );
 
     await save(BRAIN, model);
 
-    if (shouldRegenerateSamples(studyStats, controlStats)) {
+    if (await shouldRegenerateSamples(studyStats, controlStats, controlError)) {
       // TODO: Update playbook share
       controlSamples = generateSamples(playbooks);
       studySamples = generateSamples(playbooks, share);

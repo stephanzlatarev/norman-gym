@@ -1,249 +1,29 @@
-import fs from "fs";
 import * as tf from "@tensorflow/tfjs-node";
 import { load, save } from "./brain.js";
-import { log, isLeader } from "./mongo.js";
+import { log } from "./mongo.js";
+import Samples from "./samples.js";
 
 const BRAIN = process.env.BRAIN;
 
-const INPUT_SIZE = 400;
-const OUTPUT_SIZE = 100;
-const LEARNING_EPOCHS = 100;
-const LEARNING_BATCH = 10000;
+let brain;
 
-async function loadPlaybooks() {
-  const scripts = fs.readdirSync("./src/playbook/").filter(name => name.endsWith(".js"));
-  const playbooks = [];
-
-  for (const script of scripts) {
-    const module = await import("./playbook/" + script);
-    playbooks.push({
-      name: script.substring(0, script.length - 3),
-      sample: module.default,
-      share: 1 / scripts.length,
-    });
-  }
-
-  return playbooks;
-}
-
-function generateSamples(playbooks, share) {
-  const source = [];
-  const input = [];
-  const output = [];
-
-  for (const playbook of playbooks) {
-    const count = LEARNING_BATCH * (share ? share[playbook.name] : 1 / playbooks.length);
-
-    for (let i = 0; i < count; i++) {
-      const sample = playbook.sample();
-      source.push(playbook.name);
-      input.push(sample.input);
-      output.push(sample.output);
-    }
-  }
-
-  return {
-    length: input.length,
-    source: source,
-    input: input,
-    inputSize: INPUT_SIZE,
-    output: output,
-    outputSize: OUTPUT_SIZE,
-  };
-}
-
-function compare(samples, predictions) {
-  const result = {};
-
-  for (let i = 0; i < predictions.length; i++) {
-    const playbook = samples.source[i];
-
-    let error = 0;
-    for (let j = 0; j < predictions[i].length; j++) {
-      error = Math.max(error, Math.abs(samples.output[i][j] - predictions[i][j]));
-    }
-
-    let stats = result[playbook];
-    if (!stats) {
-      stats = { share: 0, error: 0, errorMax: -Infinity, errorMin: Infinity, pass: 0, fail: 0, count: 0 };
-      result[playbook] = stats;
-    }
-
-    stats.count++;
-    stats.error += error;
-    stats.errorMax = Math.max(stats.errorMax, error);
-    stats.errorMin = Math.min(stats.errorMin, error);
-
-    if (error < 0.01) {
-      stats.pass++;
-    } else if (error > 0.99) {
-      stats.fail++;
-    }
-  }
-
-  for (const playbook in result) {
-    const stats = result[playbook];
-    stats.pass /= stats.count;
-    stats.error /= stats.count;
-    stats.share = stats.count / predictions.length;
-  }
-
-  return result;
-}
-
-function findWorstSample(samples, predictions) {
-  let worstError = -Infinity;
-  let worstIndex = -1;
-  let worstSpot = -1;
-
-  for (let i = 0; i < predictions.length; i++) {
-    let error = -Infinity;
-    let spot = -1;
-
-    for (let j = 0; j < predictions[i].length; j++) {
-      const spotError = Math.abs(samples.output[i][j] - predictions[i][j]);
-
-      if (spotError > error) {
-        error = spotError;
-        spot = j;
-      }
-    }
-
-    if (error > worstError) {
-      worstError = error;
-      worstIndex = i;
-      worstSpot = spot;
-    }
-  }
-
-  return {
-    playbook: samples.source[worstIndex],
-    input: samples.input[worstIndex],
-    output: samples.output[worstIndex],
-    prediction: predictions[worstIndex],
-    spot: worstSpot,
-  };
-}
-
-function findOppositeSample(sample, samples, predictions) {
-  const spot = sample.spot;
-  const sampleExpectated = sample.output[spot];
-  const samplePredicted = sample.prediction[spot];
-
-  let worstError = -Infinity;
-  let worstIndex = -1;
-
-  for (let i = 0; i < predictions.length; i++) {
-    const thisExpected = samples.output[i][spot];
-    const thisPredicted = predictions[i][spot];
-
-    if ((samplePredicted < sampleExpectated) && (samplePredicted < thisExpected)) continue;
-    if ((samplePredicted > sampleExpectated) && (samplePredicted > thisExpected)) continue;
-
-    if ((thisPredicted < sampleExpectated) && (thisPredicted < thisExpected)) continue;
-    if ((thisPredicted > sampleExpectated) && (thisPredicted > thisExpected)) continue;
-
-    const error = Math.abs(thisExpected - thisPredicted);
-
-    if (error > worstError) {
-      worstError = error;
-      worstIndex = i;
-    }
-  }
-
-  return {
-    playbook: samples.source[worstIndex],
-    input: samples.input[worstIndex],
-    output: samples.output[worstIndex],
-    prediction: predictions[worstIndex],
-    spot: spot,
-  };
-}
-
-async function run(model, studySamples, controlSamples) {
-  tf.engine().startScope();
-
-  const controlSamplesCount = controlSamples.input.length;
-  const inputControlSamples = tf.tensor(controlSamples.input, [controlSamplesCount, controlSamples.inputSize]);
-  const studySamplesCount = studySamples.input.length;
-  const inputStudySamples = tf.tensor(studySamples.input, [studySamplesCount, studySamples.inputSize]);
-  const outputStudySamples = tf.tensor(studySamples.output, [studySamplesCount, studySamples.outputSize]);
-
-  await model.fit(inputStudySamples, outputStudySamples, { epochs: LEARNING_EPOCHS, batchSize: LEARNING_BATCH, shuffle: true, verbose: false });
-
-  const controlPredictions = await model.predict(inputControlSamples, { batchSize: controlSamplesCount }).array();
-  const controlStats = compare(controlSamples, controlPredictions);
-
-  const studyPredictions = await model.predict(inputStudySamples, { batchSize: studySamplesCount }).array();
-  const studyStats = compare(studySamples, studyPredictions);
-
-  const worstSample = findWorstSample(studySamples, studyPredictions);
-  const worstSampleOpposite = findOppositeSample(worstSample, studySamples, studyPredictions);
-
-  tf.engine().endScope();
-
-  return {
-    controlStats: controlStats,
-    studyStats: studyStats,
-    worstSample: { sample: worstSample, opposite: worstSampleOpposite },
-  };
-}
-
-async function shouldRegenerateSamples(studyStats, controlSamples, controlError) {
-  // Check if the brain has studied the samples perfectly
-  for (const playbook in studyStats) {
-    if ((studyStats[playbook].pass >= 1) || (studyStats[playbook].errorMax <= controlSamples[playbook].error)) return true;
-  }
-
-  // Check if the brain is a challenger on the leaderboard and has studied the samples halfway
-  const studyError = overall(studyStats, "error");
-  if ((studyError + studyError < controlError) && !(await isLeader(BRAIN))) {
-    return true;
-  }
-
-  // Otherwise keep on studying the same samples
-  return false;
-}
-
-function overall(stats, field) {
-  let error = 0;
-
-  for (const playbook in stats) {
-    error += stats[playbook][field] * stats[playbook].share;
-  }
-
-  return error;
+async function onEpochEnd(epoch, logs) {
+  await log(BRAIN, { epoch: epoch, ...logs });
+  await save(BRAIN, brain);
 }
 
 async function go() {
-  const playbooks = await loadPlaybooks();
-  let controlSamples = generateSamples(playbooks);
+  const samples = new Samples();
+  await samples.init();
 
-  const share = {};
-  for (const playbook of playbooks) share[playbook.name] = 1 / playbooks.length;
+  brain = await load(BRAIN);
 
-  let model = await load(BRAIN);
-  let studySamples = generateSamples(playbooks, share);
-
-  let epoch = 0;
-  while (++epoch) {
-    const { studyStats, controlStats, worstSample } = await run(model, studySamples, controlSamples);
-    const controlError = overall(controlStats, "error");
-    const controlPass = overall(controlStats, "pass");
-
-    await log(BRAIN,
-      { epoch: epoch, study: studyStats, control: controlStats, error: controlError, pass: controlPass },
-      { worst: worstSample }
-    );
-
-    await save(BRAIN, model);
-
-    if (await shouldRegenerateSamples(studyStats, controlStats, controlError)) {
-      // TODO: Update playbook share
-      controlSamples = generateSamples(playbooks);
-      studySamples = generateSamples(playbooks, share);
-    }
-  }
+  await brain.fitDataset(tf.data.generator(samples.stream), {
+    epochs: Number.MAX_SAFE_INTEGER,
+    yieldEvery: "never",
+    verbose: 1,
+    callbacks: { onEpochEnd },
+  });
 }
 
 go();

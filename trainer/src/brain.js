@@ -13,7 +13,7 @@ function create() {
 
   model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE, activation: HIDDEN_ACTIVATION_FUNCTION }));
   model.add(tf.layers.dense({ units: OUTPUT_SIZE, activation: OUTPUT_ACTIVATION_FUNCTION }));
-  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
+  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
 
   console.log("Brain created:");
   model.summary();
@@ -32,7 +32,7 @@ export async function load(name) {
     }
   });
 
-  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
+  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
 
   console.log("Brain loaded:");
   model.summary();
@@ -46,4 +46,12 @@ export async function save(name, model) {
       saveBrain(name, { ...model, weightData: Array.from(new Uint8Array(model.weightData)) });
     }
   });
+}
+
+function error(actual, expected) {
+  return actual.sub(expected).abs().max(1).mean();
+}
+
+function pass(actual, expected) {
+  return tf.scalar(1).sub(actual.sub(expected).abs().max(1).sub(0.01).step().mean());
 }

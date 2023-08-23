@@ -14,9 +14,11 @@ export default class Progress extends React.Component {
     const xstep = WIDTH / (this.props.progress.length - 1);
     let key = 1;
 
-    const series = {};
+    const series = { overall: { color: "black", study: [], control: [] } };
     let x = 0;
     for (const point of this.props.progress) {
+      series.overall.study.push(x + "," + y(point[this.props.indicator]));
+
       for (const playbook in point.study) {
         if (!series[playbook]) {
           series[playbook] = { color: this.props.playbooks[playbook].color, study: [], control: [] };
@@ -63,17 +65,17 @@ export default class Progress extends React.Component {
 }
 
 function logy(value) {
-  return Math.min(Math.abs(Math.log10(value)), 5);
+  return (value >= 0) ? Math.min(Math.abs(Math.log10(value)), 5) : 0;
 }
 
 function logt(y) {
-  return "0." + ("00000".substring(5 - y)) + "X";
+  return (y >= 0) ? "0." + ("00000".substring(5 - y)) + "X" : "-";
 }
 
 function pery(value) {
-  return 5 - Math.min(value * 5, 5);
+  return (value >= 0) ? 5 - Math.min(value * 5, 5) : 0;
 }
 
 function pert(y) {
-  return Math.floor(100 - y * 20) + "%";
+  return (y >= 0) ? Math.floor(100 - y * 20) + "%" : "-";
 }

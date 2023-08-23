@@ -10,24 +10,28 @@ async function connect() {
 
     db = client.db("gym");
 
-    db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 * 8 } )
+    db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 } )
   }
 
   return db;
 }
 
-export async function log(brain, progress, samples) {
+export async function log(brain, progress) {
   const db = await connect();
 
   progress.brain = brain;
   progress.time = new Date();
   await db.collection("progress").insertOne(progress);
 
-  samples.brain = brain;
-  await db.collection("samples").findOneAndReplace({ brain: brain }, samples, { upsert: true });
-
   const rank = { brain: brain, error: progress.error, pass: progress.pass };
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
+}
+
+export async function sample(brain, samples) {
+  const db = await connect();
+
+  samples.brain = brain;
+  await db.collection("samples").findOneAndReplace({ brain: brain }, samples, { upsert: true });
 }
 
 export async function isLeader(brain) {

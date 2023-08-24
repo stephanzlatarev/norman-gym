@@ -8,7 +8,7 @@ const OUTPUT_SIZE = 100;
 export default class Samples {
 
   constructor() {
-    this.mode = "easy";
+    this.mode = "none";
     this.stream = () => this;
   }
 
@@ -33,7 +33,7 @@ export default class Samples {
   }
 
   batch() {
-    if ((this.mode === "hard") && this.hardSamples) return this.hardSamples;
+    if ((this.mode === "hard") && this.hard) return this.hard;
 
     const source = [];
     const input = [];
@@ -50,7 +50,7 @@ export default class Samples {
       }
     }
 
-    this.hardSamples = {
+    this.hard = {
       length: input.length,
       source: source,
       input: input,
@@ -59,7 +59,7 @@ export default class Samples {
       outputSize: OUTPUT_SIZE,
     };
 
-    return this.hardSamples;
+    return this.hard;
   }
 
   next() {

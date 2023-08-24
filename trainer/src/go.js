@@ -13,17 +13,18 @@ async function onEpochBegin() {
   if (await isLeader(BRAIN)) {
     // Store hard samples
     samples.mode = "easy";
-  } else if (samples.mode === "easy") {
+  } else {
     // Study hard samples
     samples.mode = "hard";
   }
 }
 
 async function onEpochEnd(epoch, logs) {
-  if (samples.mode === "easy") {
+  if ((samples.mode === "easy") || !control) {
     control = logs;
   } else if ((samples.mode === "hard") && (logs.error + logs.error < control.error)) {
     samples.mode = "easy";
+    samples.hard = null;
   }
 
   await log(BRAIN, samples.mode, { epoch: epoch, study: { overall: { ...logs } }, control: { overall: { ...control } } });

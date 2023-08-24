@@ -16,14 +16,14 @@ async function connect() {
   return db;
 }
 
-export async function log(brain, progress) {
+export async function log(brain, mode, progress) {
   const db = await connect();
 
   progress.brain = brain;
   progress.time = new Date();
   await db.collection("progress").insertOne(progress);
 
-  const rank = { brain: brain, error: progress.error, pass: progress.pass };
+  const rank = { brain: brain, mode: mode, error: progress.control.overall.error, pass: progress.control.overall.pass };
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 

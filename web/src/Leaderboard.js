@@ -20,6 +20,7 @@ export default class Controls extends React.Component {
       brains.push(
         <TableRow key={ brain.brain } sx={ style } onClick={ selectBrain }>
           <TableCell>{ brain.brain }</TableCell>
+          <TableCell>{ brain.mode }</TableCell>
           <TableCell>{ brain.error.toFixed(4) }</TableCell>
           <TableCell>{ (brain.pass * 100).toFixed(2) }%</TableCell>
         </TableRow>
@@ -32,6 +33,7 @@ export default class Controls extends React.Component {
           <TableHead>
             <TableRow>
               <TableCell>BRAIN</TableCell>
+              <TableCell>MODE</TableCell>
               <TableCell>ERROR</TableCell>
               <TableCell>PASS</TableCell>
             </TableRow>

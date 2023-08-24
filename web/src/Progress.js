@@ -14,14 +14,12 @@ export default class Progress extends React.Component {
     const xstep = WIDTH / (this.props.progress.length - 1);
     let key = 1;
 
-    const series = { overall: { color: "black", study: [], control: [] } };
+    const series = {};
     let x = 0;
     for (const point of this.props.progress) {
-      series.overall.study.push(x + "," + y(point[this.props.indicator]));
-
       for (const playbook in point.study) {
         if (!series[playbook]) {
-          series[playbook] = { color: this.props.playbooks[playbook].color, study: [], control: [] };
+          series[playbook] = { color: color(this.props.playbooks[playbook]), study: [], control: [] };
         }
 
         series[playbook].study.push(x + "," + y(point.study[playbook][this.props.indicator]));
@@ -35,12 +33,12 @@ export default class Progress extends React.Component {
     for (const playbook in series) {
       const data = series[playbook];
       lines.push(
-        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1 }}>
+        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1, strokeDasharray: "0.1,0.1" }}>
           <polyline points={ data.study.join(" ")} />
         </g>
       );
       lines.push(
-        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1, strokeDasharray: "0.1,0.1" }}>
+        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1 }}>
           <polyline points={ data.control.join(" ")} />
         </g>
       );
@@ -62,6 +60,10 @@ export default class Progress extends React.Component {
       </svg>
     );
   }
+}
+
+function color(playbook) {
+  return (playbook && playbook.color) ? playbook.color : "black";
 }
 
 function logy(value) {

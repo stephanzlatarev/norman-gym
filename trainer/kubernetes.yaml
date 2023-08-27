@@ -26,6 +26,8 @@ spec:
           env:
             - name: BRAIN
               value: "brain"
+            - name: MODE
+              value: "dive"
             - name: VERSION
               value: "0"
 
@@ -58,6 +60,8 @@ spec:
           env:
             - name: BRAIN
               value: "brainiac"
+            - name: MODE
+              value: "bubble"
             - name: VERSION
               value: "0"
 

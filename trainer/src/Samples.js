@@ -1,16 +1,10 @@
 import fs from "fs";
-import * as tf from "@tensorflow/tfjs-node";
 
 const BATCH_SIZE = 10000;
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
 
 export default class Samples {
-
-  constructor() {
-    this.mode = "none";
-    this.stream = () => this;
-  }
 
   async init() {
     this.playbooks = [];
@@ -33,8 +27,6 @@ export default class Samples {
   }
 
   batch() {
-    if ((this.mode === "hard") && this.hard) return this.hard;
-
     const source = [];
     const input = [];
     const output = [];
@@ -50,7 +42,7 @@ export default class Samples {
       }
     }
 
-    this.hard = {
+    return {
       length: input.length,
       source: source,
       input: input,
@@ -58,19 +50,6 @@ export default class Samples {
       output: output,
       outputSize: OUTPUT_SIZE,
     };
-
-    return this.hard;
   }
 
-  next() {
-    const batch = this.batch();
-    const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
-    const output = tf.tensor(batch.output, [batch.length, batch.outputSize]);
-
-    const now = new Date().getMinutes();
-    const done = (this.time > 0) && (this.time !== now);
-    this.time = now;
-
-    return { value: { xs: input, ys: output }, done: done };
-  }
 }

@@ -1,47 +1,46 @@
-import * as tf from "@tensorflow/tfjs-node";
-import { load, save } from "./brain.js";
-import { log, isLeader } from "./mongo.js";
-import Samples from "./samples.js";
-
-const BRAIN = process.env.BRAIN;
-
-let brain;
-let samples;
-let control; 
-
-async function onEpochBegin() {
-  if (await isLeader(BRAIN)) {
-    // Store hard samples
-    samples.mode = "easy";
-  } else {
-    // Study hard samples
-    samples.mode = "hard";
-  }
-}
-
-async function onEpochEnd(epoch, logs) {
-  if ((samples.mode === "easy") || !control) {
-    control = logs;
-  } else if ((samples.mode === "hard") && (logs.error + logs.error < control.error)) {
-    samples.mode = "easy";
-    samples.hard = null;
-  }
-
-  await log(BRAIN, samples.mode, { epoch: epoch, study: { overall: { ...logs } }, control: { overall: { ...control } } });
-  await save(BRAIN, brain);
-}
+import { log } from "./mongo.js";
+import Brain from "./Brain.js";
+import Samples from "./Samples.js";
 
 async function go() {
-  brain = await load(BRAIN);
-  samples = new Samples();
+  const brain = new Brain(process.env.BRAIN);
+  await brain.load();
 
+  const samples = new Samples();
   await samples.init();
-  await brain.fitDataset(tf.data.generator(samples.stream), {
-    epochs: Number.MAX_SAFE_INTEGER,
-    yieldEvery: "never",
-    verbose: 1,
-    callbacks: { onEpochBegin, onEpochEnd },
-  });
+
+  const module = await import("./mode/" + (process.env.MODE ? process.env.MODE : "flow") + ".js");
+  const mode = new module.default(samples, brain);
+
+  let controlBatch = samples.batch();
+  let time = 0;
+
+  while (true) {
+    const studyLogs = await brain.fit(mode.batch());
+    const studyLoss = studyLogs.loss;
+    const controlLogs = await brain.evaluate(controlBatch);
+    const controlLoss = controlLogs.loss;
+
+    if (mode.onBatchEnd) {
+      await mode.onBatchEnd(controlLoss, studyLoss);
+    }
+
+    const now = new Date().getMinutes();
+    const epochEnded = (time > 0) && (time !== now);
+
+    if (epochEnded) {
+      if (mode.onEpochEnd) {
+        await mode.onEpochEnd(controlLoss, studyLoss);
+      }
+
+      await log(brain.name, mode.name, { study: { overall: { ...studyLogs } }, control: { overall: { ...controlLogs } } });
+      await brain.save();
+
+      controlBatch = samples.batch();
+    }
+
+    time = now;
+  }
 }
 
 go();

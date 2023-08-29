@@ -2,18 +2,52 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: trainer
+  name: trainer-looney
   labels:
-    module: trainer
+    module: trainer-looney
 spec:
   replicas: 1
   selector:
     matchLabels:
-      module: trainer
+      module: trainer-looney
   template:
     metadata:
       labels:
-        module: trainer
+        module: trainer-looney
+    spec:
+      containers:
+        - name: trainer-looney
+          image: docker.io/stephanzlatarev/norman-gym-trainer
+          imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+          env:
+            - name: BRAIN
+              value: "looney"
+            - name: MODE
+              value: "stick"
+            - name: VERSION
+              value: "0"
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: trainer-brain
+  labels:
+    module: trainer-brain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      module: trainer-brain
+  template:
+    metadata:
+      labels:
+        module: trainer-brain
     spec:
       containers:
         - name: trainer
@@ -28,40 +62,6 @@ spec:
               value: "brain"
             - name: MODE
               value: "dive"
-            - name: VERSION
-              value: "0"
-
----
-
-kind: Deployment
-apiVersion: apps/v1
-metadata:
-  name: trainer-brainiac
-  labels:
-    module: trainer-brainiac
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      module: trainer-brainiac
-  template:
-    metadata:
-      labels:
-        module: trainer-brainiac
-    spec:
-      containers:
-        - name: trainer
-          image: docker.io/stephanzlatarev/norman-gym-trainer
-          imagePullPolicy: Always
-          resources:
-            requests:
-              memory: "1Gi"
-              cpu: "250m"
-          env:
-            - name: BRAIN
-              value: "brainiac"
-            - name: MODE
-              value: "bubble"
             - name: VERSION
               value: "0"
 

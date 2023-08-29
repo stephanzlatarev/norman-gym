@@ -1,4 +1,5 @@
 import { MongoClient } from "mongodb";
+import zlib from "zlib";
 
 let db = null;
 
@@ -52,6 +53,7 @@ export async function loadBrain(name) {
 
 export async function saveBrain(name, brain) {
   const db = await connect();
+  const record = zlib.gzipSync(Buffer.from(JSON.stringify(brain), "utf-8")).toString("base64");
 
-  await db.collection("brain").findOneAndReplace({ name: name }, { name: name, brain: brain }, { upsert: true });
+  await db.collection("brain").findOneAndReplace({ name: name }, { name: name, brain: record }, { upsert: true });
 }

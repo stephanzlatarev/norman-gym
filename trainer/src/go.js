@@ -12,14 +12,20 @@ async function go() {
   const module = await import("./mode/" + (process.env.MODE ? process.env.MODE : "flow") + ".js");
   const mode = new module.default(samples, brain);
 
-  let controlBatch = samples.batch();
   let time = 0;
+  let recordLogs = { loss: Infinity };
+  let controlBatch = samples.batch();
 
   while (true) {
     const studyLogs = await brain.fit(mode.batch());
     const studyLoss = studyLogs.loss;
     const controlLogs = await brain.evaluate(controlBatch);
     const controlLoss = controlLogs.loss;
+
+    if (controlLoss < recordLogs.loss) {
+      await brain.save();
+      recordLogs = controlLogs;
+    }
 
     if (mode.onBatchEnd) {
       await mode.onBatchEnd(controlLoss, studyLoss);
@@ -33,8 +39,7 @@ async function go() {
         await mode.onEpochEnd(controlLoss, studyLoss);
       }
 
-      await log(brain.name, mode.name, { study: { overall: { ...studyLogs } }, control: { overall: { ...controlLogs } } });
-      await brain.save();
+      await log(brain.name, mode.name, { study: { overall: { ...studyLogs } }, control: { overall: { ...controlLogs } }, record: { overall: { ...recordLogs } } });
 
       controlBatch = samples.batch();
     }

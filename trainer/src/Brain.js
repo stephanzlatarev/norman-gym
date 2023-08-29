@@ -30,8 +30,6 @@ export default class Brain {
       model = tf.sequential();
       model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE }));
       model.add(tf.layers.leakyReLU());
-      model.add(tf.layers.dense({ units: INPUT_SIZE }));
-      model.add(tf.layers.leakyReLU());
       model.add(tf.layers.dense({ units: OUTPUT_SIZE }));
       model.add(tf.layers.leakyReLU());
     }

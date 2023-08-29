@@ -3,8 +3,6 @@ import { loadBrain, saveBrain } from "./mongo.js";
 
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
-const HIDDEN_ACTIVATION_FUNCTION = "relu";
-const OUTPUT_ACTIVATION_FUNCTION = "sigmoid";
 const OPTIMIZER_FUNCTION = "adam";
 const LOSS_FUNCTION = "meanSquaredError";
 
@@ -30,8 +28,12 @@ export default class Brain {
       console.log("Creating brain...");
 
       model = tf.sequential();
-      model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE, activation: HIDDEN_ACTIVATION_FUNCTION }));
-      model.add(tf.layers.dense({ units: OUTPUT_SIZE, activation: OUTPUT_ACTIVATION_FUNCTION }));
+      model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE }));
+      model.add(tf.layers.leakyReLU());
+      model.add(tf.layers.dense({ units: INPUT_SIZE }));
+      model.add(tf.layers.leakyReLU());
+      model.add(tf.layers.dense({ units: OUTPUT_SIZE }));
+      model.add(tf.layers.leakyReLU());
     }
 
     model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
@@ -46,7 +48,7 @@ export default class Brain {
     const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
     const output = tf.tensor(batch.output, [batch.length, batch.outputSize]);
 
-    const result = await this.model.fit(input, output, { epochs: 1, batchSize: batch.length, shuffle: true, verbose: 1 });
+    const result = await this.model.fit(input, output, { epochs: 1, batchSize: batch.length, shuffle: true, verbose: 0 });
 
     tf.engine().endScope();
 
@@ -76,6 +78,17 @@ export default class Brain {
       error: error,
       pass: pass,
     };
+  }
+
+  async predict(batch) {
+    tf.engine().startScope();
+
+    const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
+    const result = await this.model.predict(input, { batchSize: batch.length, verbose: 0 }).array();
+
+    tf.engine().endScope();
+
+    return result;
   }
 
   async checkpoint() {

@@ -1,8 +1,6 @@
 import fs from "fs";
 
 const BATCH_SIZE = 10000;
-const INPUT_SIZE = 400;
-const OUTPUT_SIZE = 100;
 
 export default class Samples {
 
@@ -46,9 +44,9 @@ export default class Samples {
       length: input.length,
       source: source,
       input: input,
-      inputSize: INPUT_SIZE,
+      inputSize: input.length ? input[0].length : 0,
       output: output,
-      outputSize: OUTPUT_SIZE,
+      outputSize: output.length ? output[0].length : 0,
     };
   }
 

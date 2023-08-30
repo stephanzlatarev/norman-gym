@@ -48,7 +48,9 @@ export async function loadBrain(name) {
   const db = await connect();
   const record = await db.collection("brain").findOne({ name: name });
 
-  return record ? record.brain : null;
+  if (record) {
+    return JSON.parse(zlib.gunzipSync(Buffer.from(record.brain, "base64")).toString("utf-8"));
+  }
 }
 
 export async function saveBrain(name, brain) {

@@ -13,8 +13,8 @@ async function go() {
   const mode = new module.default(samples, brain);
 
   let time = 0;
-  let recordLogs = { loss: Infinity };
   let controlBatch = samples.batch();
+  let recordLogs = await brain.evaluate(controlBatch);
 
   while (true) {
     const studyLogs = await brain.fit(mode.batch());

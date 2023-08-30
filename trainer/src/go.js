@@ -1,6 +1,7 @@
-import { log } from "./mongo.js";
 import Brain from "./Brain.js";
 import Samples from "./Samples.js";
+import { findWorstSample } from "./analysis.js";
+import { log, sample } from "./mongo.js";
 
 async function go() {
   const brain = new Brain(process.env.BRAIN);
@@ -40,6 +41,7 @@ async function go() {
       }
 
       await log(brain.name, mode.name, { study: { overall: { ...studyLogs } }, control: { overall: { ...controlLogs } }, record: { overall: { ...recordLogs } } });
+      await sample(brain.name, "worst", findWorstSample(controlBatch, await brain.predict(controlBatch)));
 
       controlBatch = samples.batch();
     }

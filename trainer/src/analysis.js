@@ -38,7 +38,7 @@ function compare(samples, predictions) {
   return result;
 }
 
-function findWorstSample(samples, predictions) {
+export function findWorstSample(samples, predictions) {
   let worstError = -Infinity;
   let worstIndex = -1;
   let worstSpot = -1;

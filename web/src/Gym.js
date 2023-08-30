@@ -66,8 +66,18 @@ export default class Gym extends React.Component {
 
   render() {
     const meta = playbooks(this.state.progress);
-    const worstSample = this.state.samples[0] ? this.state.samples[0].worst.sample : null;
-    const worstSampleOpposite = worstSample ? this.state.samples[0].worst.opposite : null;
+
+    const samplesTabs = [];
+    const samplesViews = [];
+    for (let index = 0; index < this.state.samples.length; index++) {
+      const sample = this.state.samples[index];
+      samplesTabs.push(
+        <Tab key={ index } label={ sample.label } />
+      );
+      samplesViews.push(
+        <Sample key={ index } visible={ this.state.samplesTab === index } sample={ sample } />
+      );
+    }
 
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
@@ -92,19 +102,10 @@ export default class Gym extends React.Component {
         <Paper elevation={3} sx={{ padding: "1rem" }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={ this.state.samplesTab } onChange={ this.changeSamplesTab.bind(this) }>
-              <Tab label="Worst" />
+              { samplesTabs }
             </Tabs>
           </Box>
-          <Sample visible={ this.state.samplesTab === 0 } sample={ worstSample } />
-        </Paper>
-
-        <Paper elevation={3} sx={{ padding: "1rem" }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={ 0 }>
-              <Tab label="Opposite" />
-            </Tabs>
-          </Box>
-          <Sample sample={ worstSampleOpposite } />
+          { samplesViews }
         </Paper>
 
         </Stack>

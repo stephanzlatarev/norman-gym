@@ -28,11 +28,12 @@ export async function log(brain, mode, progress) {
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 
-export async function sample(brain, samples) {
+export async function sample(brain, label, sample) {
   const db = await connect();
 
-  samples.brain = brain;
-  await db.collection("samples").findOneAndReplace({ brain: brain }, samples, { upsert: true });
+  sample.brain = brain;
+  sample.label = label;
+  await db.collection("samples").findOneAndReplace({ brain: brain, label: label }, sample, { upsert: true });
 }
 
 export async function isLeader(brain) {

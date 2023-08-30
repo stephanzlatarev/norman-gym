@@ -3,7 +3,7 @@ import React from "react";
 export default class Sample extends React.Component {
 
   render() {
-    if (!this.props.sample) return null;
+    if (!this.props.visible || !this.props.sample || !this.props.sample.input || !this.props.sample.output || !this.props.sample.prediction) return null;
 
     const sample = this.props.sample;
     const objects = [];

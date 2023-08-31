@@ -93,10 +93,12 @@ export default class Gym extends React.Component {
             <Tabs value={ this.state.progressTab } onChange={ this.changeProgressTab.bind(this) }>
               <Tab label="Pass" />
               <Tab label="Error" />
+              <Tab label="Loss" />
             </Tabs>
           </Box>
           <Progress visible={ this.state.progressTab === 0 } playbooks={ meta } progress={ this.state.progress } indicator="pass" type="per" />
           <Progress visible={ this.state.progressTab === 1 } playbooks={ meta } progress={ this.state.progress } indicator="error" type="log" />
+          <Progress visible={ this.state.progressTab === 2 } playbooks={ meta } progress={ this.state.progress } indicator="loss" type="log" />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>

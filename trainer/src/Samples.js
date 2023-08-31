@@ -1,21 +1,31 @@
 import fs from "fs";
 
 const BATCH_SIZE = 10000;
+const COLORS = ["green", "blue", "orange", "red", "pink", "brown"];
 
 export default class Samples {
 
   async init() {
     this.playbooks = [];
 
+    const mapping = JSON.parse(fs.readFileSync("./src/playbook/mapping.json"));
+    const meta = { skill: mapping.label, playbooks: {} };
+
+    const colors = [...COLORS];
     const scripts = fs.readdirSync("./src/playbook/").filter(name => name.endsWith(".js"));
 
     for (const script of scripts) {
       const module = await import("./playbook/" + script);
+      const name = script.substring(0, script.length - 3);
+
+      meta.playbooks[name] = { color: colors.shift() };
       this.playbooks.push({
-        name: script.substring(0, script.length - 3),
+        name: name,
         sample: module.default,
       });
     }
+
+    return meta;
   }
 
   batch() {

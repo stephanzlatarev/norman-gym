@@ -17,6 +17,14 @@ async function connect() {
   return db;
 }
 
+export async function session(meta) {
+  const db = await connect();
+
+  meta.id = 1;
+
+  await db.collection("sessions").findOneAndReplace({ id: 1 }, meta, { upsert: true });
+}
+
 export async function log(brain, mode, progress) {
   const db = await connect();
 

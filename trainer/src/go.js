@@ -1,14 +1,14 @@
 import Brain from "./Brain.js";
 import Samples from "./Samples.js";
 import { findWorstSample } from "./analysis.js";
-import { log, sample } from "./mongo.js";
+import { log, sample, session } from "./mongo.js";
 
 async function go() {
   const brain = new Brain(process.env.BRAIN);
   await brain.load();
 
   const samples = new Samples();
-  await samples.init();
+  await session(await samples.init());
 
   const module = await import("./mode/" + (process.env.MODE ? process.env.MODE : "flow") + ".js");
   const mode = new module.default(samples, brain);

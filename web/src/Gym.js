@@ -17,6 +17,7 @@ export default class Gym extends React.Component {
 
     this.state = {
       tracker: null,
+      session: null,
       rank: [],
       brain: "brain",
       progress: [],
@@ -50,6 +51,14 @@ export default class Gym extends React.Component {
   }
 
   async refresh() {
+    const sessions = await Api.get("session");
+
+    if (sessions && sessions.length) {
+      const session = sessions[0];
+      session.playbooks["overall"] = { color: "black" };
+      this.setState({ session: session });
+    }
+
     const rank = await Api.get("rank");
 
     if (rank) {
@@ -65,7 +74,7 @@ export default class Gym extends React.Component {
   }
 
   render() {
-    const meta = playbooks(this.state.progress);
+    const playbooks = this.state.session ? this.state.session.playbooks : {};
 
     const samplesTabs = [];
     const samplesViews = [];
@@ -82,7 +91,7 @@ export default class Gym extends React.Component {
     return (
       <Stack spacing={2} direction="row" flexWrap="wrap">
 
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Controls /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}><Controls session={ this.state.session } /></Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
           <Leaderboard rank={ this.state.rank } selected={ this.state.brain } onSelect={ this.selectBrain.bind(this) } />
@@ -96,9 +105,9 @@ export default class Gym extends React.Component {
               <Tab label="Loss" />
             </Tabs>
           </Box>
-          <Progress visible={ this.state.progressTab === 0 } playbooks={ meta } progress={ this.state.progress } indicator="pass" type="per" />
-          <Progress visible={ this.state.progressTab === 1 } playbooks={ meta } progress={ this.state.progress } indicator="error" type="log" />
-          <Progress visible={ this.state.progressTab === 2 } playbooks={ meta } progress={ this.state.progress } indicator="loss" type="log" />
+          <Progress visible={ this.state.progressTab === 0 } playbooks={ playbooks } progress={ this.state.progress } indicator="pass" type="per" />
+          <Progress visible={ this.state.progressTab === 1 } playbooks={ playbooks } progress={ this.state.progress } indicator="error" type="log" />
+          <Progress visible={ this.state.progressTab === 2 } playbooks={ playbooks } progress={ this.state.progress } indicator="loss" type="log" />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
@@ -113,23 +122,4 @@ export default class Gym extends React.Component {
         </Stack>
     );
   }
-}
-
-// TODO: Replace with a playbooks record coming from the database
-const COLORS = ["green", "blue", "orange", "red"];
-function playbooks(progress) {
-  const playbooks = {};
-  let index = 0;
-
-  for (const one of progress) {
-    for (const name in one.control) {
-      if (!playbooks[name] && (name !== "overall")) {
-        playbooks[name] = { color: COLORS[index++] };
-      }
-    }
-  }
-
-  playbooks["overall"] = { color: "black" };
-
-  return playbooks;
 }

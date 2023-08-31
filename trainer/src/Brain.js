@@ -1,6 +1,8 @@
 import * as tf from "@tensorflow/tfjs-node";
 import { loadBrain, saveBrain } from "./mongo.js";
 
+const SCALE = process.env.SCALE ? Number(process.env.SCALE) : 1;
+
 const INPUT_SIZE = 400;
 const OUTPUT_SIZE = 100;
 const OPTIMIZER_FUNCTION = "adam";
@@ -28,7 +30,7 @@ export default class Brain {
       console.log("Creating brain...");
 
       model = tf.sequential();
-      model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE }));
+      model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE * SCALE }));
       model.add(tf.layers.leakyReLU());
       model.add(tf.layers.dense({ units: OUTPUT_SIZE }));
       model.add(tf.layers.leakyReLU());

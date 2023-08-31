@@ -27,7 +27,9 @@ spec:
             - name: BRAIN
               value: "looney"
             - name: MODE
-              value: "stick"
+              value: "flow"
+            - name: SCALE
+              value: "1"
             - name: VERSION
               value: "0"
 
@@ -61,7 +63,9 @@ spec:
             - name: BRAIN
               value: "brain"
             - name: MODE
-              value: "dive"
+              value: "flow"
+            - name: SCALE
+              value: "2"
             - name: VERSION
               value: "0"
 
@@ -94,5 +98,9 @@ spec:
           env:
             - name: BRAIN
               value: "pinky"
+            - name: MODE
+              value: "flow"
+            - name: SCALE
+              value: "4"
             - name: VERSION
               value: "0"

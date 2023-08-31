@@ -6,7 +6,6 @@ export default class Samples {
 
   async init() {
     this.playbooks = [];
-    this.share = {};
 
     const scripts = fs.readdirSync("./src/playbook/").filter(name => name.endsWith(".js"));
 
@@ -15,39 +14,46 @@ export default class Samples {
       this.playbooks.push({
         name: script.substring(0, script.length - 3),
         sample: module.default,
-        share: 1 / scripts.length,
       });
-    }
-
-    for (const playbook of this.playbooks) {
-      this.share[playbook.name] = 1 / this.playbooks.length;
     }
   }
 
   batch() {
-    const source = [];
-    const input = [];
-    const output = [];
-
-    for (const playbook of this.playbooks) {
-      const count = BATCH_SIZE * (this.share ? this.share[playbook.name] : 1 / this.playbooks.length);
-
-      for (let i = 0; i < count; i++) {
-        const sample = playbook.sample();
-        source.push(playbook.name);
-        input.push(sample.input);
-        output.push(sample.output);
-      }
-    }
-
-    return {
-      length: input.length,
-      source: source,
-      input: input,
-      inputSize: input.length ? input[0].length : 0,
-      output: output,
-      outputSize: output.length ? output[0].length : 0,
-    };
+    return batch(...this.playbooks);
   }
 
+  batches() {
+    return this.playbooks.map(playbook => batch(playbook));
+  }
+
+}
+
+function batch(...playbooks) {
+  const countPerPlaybook = Math.ceil(BATCH_SIZE / playbooks.length);
+
+  const source = [];
+  const input = [];
+  const output = [];
+
+  for (const playbook of playbooks) {
+    for (let i = 0; i < countPerPlaybook; i++) {
+      const sample = playbook.sample();
+      source.push(playbook.name);
+      input.push(sample.input);
+      output.push(sample.output);
+    }
+  }
+
+  source.length = BATCH_SIZE;
+  input.length = BATCH_SIZE;
+  output.length = BATCH_SIZE;
+
+  return {
+    length: BATCH_SIZE,
+    source: source,
+    input: input,
+    inputSize: input.length ? input[0].length : 0,
+    output: output,
+    outputSize: output.length ? output[0].length : 0,
+  };
 }

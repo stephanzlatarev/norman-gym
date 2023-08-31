@@ -116,18 +116,20 @@ export default class Gym extends React.Component {
 }
 
 // TODO: Replace with a playbooks record coming from the database
-const COLORS = ["black", "blue", "green", "orange", "red"];
+const COLORS = ["green", "blue", "orange", "red"];
 function playbooks(progress) {
   const playbooks = {};
   let index = 0;
 
   for (const one of progress) {
-    for (const name in one.study) {
-      if (!playbooks[name]) {
+    for (const name in one.control) {
+      if (!playbooks[name] && (name !== "overall")) {
         playbooks[name] = { color: COLORS[index++] };
       }
     }
   }
+
+  playbooks["overall"] = { color: "black" };
 
   return playbooks;
 }

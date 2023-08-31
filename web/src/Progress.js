@@ -17,14 +17,22 @@ export default class Progress extends React.Component {
     const series = {};
     let x = 0;
     for (const point of this.props.progress) {
-      for (const playbook in point.study) {
+      for (const playbook in this.props.playbooks) {
         if (!series[playbook]) {
           series[playbook] = { color: color(this.props.playbooks[playbook]), study: [], control: [], record: [] };
         }
 
-        series[playbook].study.push(x + "," + y(point.study[playbook][this.props.indicator]));
-        series[playbook].control.push(x + "," + y(point.control[playbook][this.props.indicator]));
-        series[playbook].record.push(x + "," + y(point.record[playbook][this.props.indicator]));
+        if (point.study[playbook]) {
+          series[playbook].study.push(x + "," + y(point.study[playbook][this.props.indicator]));
+        }
+
+        if (point.control[playbook]) {
+          series[playbook].control.push(x + "," + y(point.control[playbook][this.props.indicator]));
+        }
+
+        if (point.record[playbook]) {
+          series[playbook].record.push(x + "," + y(point.record[playbook][this.props.indicator]));
+        }
       }
 
       x += xstep;

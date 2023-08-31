@@ -16,6 +16,7 @@ async function go() {
   let time = 0;
   let controlBatch = samples.batch();
   let recordLogs = await brain.evaluate(controlBatch);
+  let recordStats = { overall: { ...recordLogs } };
 
   while (true) {
     const studyLogs = await brain.fit(mode.batch());
@@ -26,6 +27,7 @@ async function go() {
     if (controlLoss < recordLogs.loss) {
       await brain.save();
       recordLogs = controlLogs;
+      recordStats = { overall: { ...recordLogs }, ...(await assessByPlaybook(brain, samples)) };
     }
 
     if (mode.onBatchEnd) {
@@ -40,7 +42,12 @@ async function go() {
         await mode.onEpochEnd(controlLoss, studyLoss);
       }
 
-      await log(brain.name, mode.name, { study: { overall: { ...studyLogs } }, control: { overall: { ...controlLogs } }, record: { overall: { ...recordLogs } } });
+      await log(brain.name, mode.name, {
+        study: { overall: { ...studyLogs } },
+        control: { overall: { ...controlLogs }, ...(await assessByPlaybook(brain, samples)) },
+        record: recordStats,
+      });
+
       await sample(brain.name, "worst", findWorstSample(controlBatch, await brain.predict(controlBatch)));
 
       controlBatch = samples.batch();
@@ -48,6 +55,18 @@ async function go() {
 
     time = now;
   }
+}
+
+async function assessByPlaybook(brain, samples) {
+  const logs = {};
+
+  for (const playbookBatch of samples.batches()) {
+    if (playbookBatch.source.length) {
+      logs[playbookBatch.source[0]] = await brain.evaluate(playbookBatch);
+    }
+  }
+
+  return logs;
 }
 
 go();

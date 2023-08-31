@@ -24,7 +24,7 @@ export async function log(brain, mode, progress) {
   progress.time = new Date();
   await db.collection("progress").insertOne(progress);
 
-  const rank = { brain: brain, mode: mode, error: progress.control.overall.error, pass: progress.control.overall.pass };
+  const rank = { brain: brain, mode: mode, loss: progress.control.overall.loss, error: progress.control.overall.error, pass: progress.control.overall.pass };
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 

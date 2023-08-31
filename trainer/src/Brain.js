@@ -40,6 +40,7 @@ export default class Brain {
     model.summary();
 
     this.model = model;
+    this.shape = this.model.inputLayers[0].batchInputShape.concat(this.model.layers.map(layer => layer.units)).filter(units => !!units).join(":");
   }
 
   async fit(batch) {

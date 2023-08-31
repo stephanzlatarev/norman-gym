@@ -25,14 +25,14 @@ export async function session(meta) {
   await db.collection("sessions").findOneAndReplace({ id: 1 }, meta, { upsert: true });
 }
 
-export async function log(brain, mode, progress) {
+export async function log(brain, shape, progress) {
   const db = await connect();
 
   progress.brain = brain;
   progress.time = new Date();
   await db.collection("progress").insertOne(progress);
 
-  const rank = { brain: brain, mode: mode, loss: progress.control.overall.loss, error: progress.control.overall.error, pass: progress.control.overall.pass };
+  const rank = { brain: brain, shape: shape, loss: progress.control.overall.loss, error: progress.control.overall.error, pass: progress.control.overall.pass };
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 

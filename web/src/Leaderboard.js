@@ -20,6 +20,7 @@ export default class Controls extends React.Component {
       brains.push(
         <TableRow key={ brain.brain } sx={ style } onClick={ selectBrain }>
           <TableCell>{ brain.brain }</TableCell>
+          <TableCell>{ brain.shape }</TableCell>
           <TableCell>{ (brain.pass * 100).toFixed(2) }%</TableCell>
           <TableCell>{ brain.error.toFixed(4) }</TableCell>
           <TableCell>{ brain.loss.toExponential(4) }</TableCell>
@@ -33,6 +34,7 @@ export default class Controls extends React.Component {
           <TableHead>
             <TableRow>
               <TableCell>BRAIN</TableCell>
+              <TableCell>SHAPE</TableCell>
               <TableCell>PASS</TableCell>
               <TableCell>ERROR</TableCell>
               <TableCell>LOSS</TableCell>

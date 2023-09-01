@@ -81,8 +81,8 @@ async function bestShapeForLeaderboard(brain) {
     const input = Number(leaderShape[0]);
     const hidden = Number(leaderShape[1]);
     const output = Number(leaderShape[2]);
-    const maxHidden = hidden + input * Math.floor(list.length / 2);
-    const minHidden = Math.max(maxHidden - input * (list.length - 1), input);
+    const minHidden = Math.max(hidden - input * Math.floor(list.length / 2 - 1), input);
+    const maxHidden = minHidden + input * (list.length - 1);
 
     if ((minHidden <= brainShape[1]) && (brainShape[1] <= maxHidden)) {
       // This brain is already in range. If it is the best ranking of all with the exact same shape then it must not change shape.

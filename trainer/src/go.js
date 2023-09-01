@@ -7,7 +7,7 @@ async function go() {
   const samples = new Samples();
   await session(await samples.init());
 
-  const brain = new Brain(process.env.BRAIN, shapeAsText(samples));
+  const brain = new Brain(process.env.HOSTNAME, shapeAsText(samples));
   await brain.load();
 
   let time = 0;

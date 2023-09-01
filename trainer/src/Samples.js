@@ -9,6 +9,9 @@ export default class Samples {
     this.playbooks = [];
 
     const mapping = JSON.parse(fs.readFileSync("./src/playbook/mapping.json"));
+
+    this.shape = shape(mapping);
+
     const meta = { skill: mapping.label, playbooks: {} };
 
     const colors = [...COLORS];
@@ -36,6 +39,21 @@ export default class Samples {
     return this.playbooks.map(playbook => batch(playbook));
   }
 
+}
+
+function shape(mapping) {
+  let input = 0;
+  let output = 0;
+
+  for (const info of mapping.when.infos) {
+    input += info.length ? info.length : 1;
+  }
+
+  for (const info of mapping.then.infos) {
+    output += info.length ? info.length : 1;
+  }
+
+  return [input, output];
 }
 
 function batch(...playbooks) {

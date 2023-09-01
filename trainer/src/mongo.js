@@ -32,7 +32,15 @@ export async function log(brain, shape, progress) {
   progress.time = new Date();
   await db.collection("progress").insertOne(progress);
 
-  const rank = { brain: brain, shape: shape, loss: progress.control.overall.loss, error: progress.control.overall.error, pass: progress.control.overall.pass };
+  const rank = {
+    brain: brain,
+    shape: shape,
+    loss: progress.control.overall.loss,
+    error: progress.control.overall.error,
+    pass: progress.control.overall.pass,
+    record: progress.record.overall.loss,
+  };
+
   await db.collection("rank").findOneAndReplace({ brain: brain }, rank, { upsert: true });
 }
 
@@ -44,13 +52,13 @@ export async function sample(brain, label, sample) {
   await db.collection("samples").findOneAndReplace({ brain: brain, label: label }, sample, { upsert: true });
 }
 
-export async function isLeader(brain) {
+export async function leaderboard() {
   const db = await connect();
   const leaderboard = await db.collection("rank").find({}).toArray();
 
-  leaderboard.sort((a, b) => (a.error - b.error));
+  leaderboard.sort((a, b) => (a.record - b.record));
 
-  return (leaderboard.length && (leaderboard[0].brain === brain));
+  return leaderboard;
 }
 
 export async function loadBrain(name) {

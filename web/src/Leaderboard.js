@@ -24,6 +24,7 @@ export default class Controls extends React.Component {
           <TableCell>{ (brain.pass * 100).toFixed(2) }%</TableCell>
           <TableCell>{ brain.error.toFixed(4) }</TableCell>
           <TableCell>{ brain.loss.toExponential(4) }</TableCell>
+          <TableCell>{ brain.record ? brain.record.toExponential(4) : "-" }</TableCell>
         </TableRow>
       );
     }
@@ -38,6 +39,7 @@ export default class Controls extends React.Component {
               <TableCell>PASS</TableCell>
               <TableCell>ERROR</TableCell>
               <TableCell>LOSS</TableCell>
+              <TableCell>RECORD</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

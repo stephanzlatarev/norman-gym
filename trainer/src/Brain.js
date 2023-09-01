@@ -1,46 +1,46 @@
 import * as tf from "@tensorflow/tfjs-node";
 import { loadBrain, saveBrain } from "./mongo.js";
 
-const SCALE = process.env.SCALE ? Number(process.env.SCALE) : 1;
-
-const INPUT_SIZE = 400;
-const OUTPUT_SIZE = 100;
 const OPTIMIZER_FUNCTION = "adam";
 const LOSS_FUNCTION = "meanSquaredError";
 
 export default class Brain {
 
-  constructor(name) {
+  constructor(name, shape) {
     this.name = name;
+    this.shape = shape;
   }
 
   async load() {
     const record = await loadBrain(this.name);
-    let model;
 
     if (record) {
       console.log("Loading brain...");
 
-      model = await tf.loadLayersModel({
+      this.model = await tf.loadLayersModel({
         load: function() {
           return { ...record, weightData: new Uint8Array(record.weightData).buffer };
         }
       });
+      this.shape = compile(this.model);
     } else {
-      console.log("Creating brain...");
-
-      model = tf.sequential();
-      model.add(tf.layers.dense({ inputShape: [INPUT_SIZE], units: INPUT_SIZE * SCALE }));
-      model.add(tf.layers.leakyReLU());
-      model.add(tf.layers.dense({ units: OUTPUT_SIZE }));
-      model.add(tf.layers.leakyReLU());
+      this.reshape(this.shape);
     }
+  }
 
-    model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
-    model.summary();
+  reshape(shape) {
+    console.log("Creating", shape, "brain...");
+
+    const units = shape.split(":");
+    const model = tf.sequential();
+
+    model.add(tf.layers.dense({ inputShape: [Number(units[0])], units: Number(units[1]) }));
+    model.add(tf.layers.leakyReLU());
+    model.add(tf.layers.dense({ units: Number(units[2]) }));
+    model.add(tf.layers.leakyReLU());
 
     this.model = model;
-    this.shape = this.model.inputLayers[0].batchInputShape.concat(this.model.layers.map(layer => layer.units)).filter(units => !!units).join(":");
+    this.shape = compile(model);
   }
 
   async fit(batch) {
@@ -125,6 +125,13 @@ export default class Brain {
       }
     });
   }
+}
+
+function compile(model) {
+  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
+  model.summary();
+
+  return model.inputLayers[0].batchInputShape.concat(model.layers.map(layer => layer.units)).filter(units => !!units).join(":");
 }
 
 function error(actual, expected) {

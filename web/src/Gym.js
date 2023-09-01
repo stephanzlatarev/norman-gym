@@ -62,7 +62,7 @@ export default class Gym extends React.Component {
     const rank = await Api.get("rank");
 
     if (rank) {
-      rank.sort((a, b) => (a.error - b.error));
+      rank.sort((a, b) => (a.record - b.record));
       this.setState({ rank: rank });
     }
 

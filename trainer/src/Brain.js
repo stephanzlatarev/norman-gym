@@ -1,5 +1,6 @@
 import * as tf from "@tensorflow/tfjs-node";
 import { loadBrain, saveBrain } from "./mongo.js";
+import { modelToShape } from "./shape.js";
 
 const OPTIMIZER_FUNCTION = "adam";
 const LOSS_FUNCTION = "meanSquaredError";
@@ -131,7 +132,7 @@ function compile(model) {
   model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
   model.summary();
 
-  return model.inputLayers[0].batchInputShape.concat(model.layers.map(layer => layer.units)).filter(units => !!units).join(":");
+  return modelToShape(model);
 }
 
 function error(actual, expected) {

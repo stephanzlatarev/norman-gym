@@ -1,4 +1,5 @@
 import fs from "fs";
+import { skillToShape } from "./shape.js";
 
 const BATCH_SIZE = 10000;
 const COLORS = ["green", "blue", "orange", "red", "pink", "brown"];
@@ -10,7 +11,7 @@ export default class Samples {
 
     const mapping = JSON.parse(fs.readFileSync("./src/playbook/mapping.json"));
 
-    this.shape = shape(mapping);
+    this.shape = skillToShape(mapping);
 
     const meta = { skill: mapping.label, playbooks: {} };
 
@@ -39,21 +40,6 @@ export default class Samples {
     return this.playbooks.map(playbook => batch(playbook));
   }
 
-}
-
-function shape(mapping) {
-  let input = 0;
-  let output = 0;
-
-  for (const info of mapping.when.infos) {
-    input += info.length ? info.length : 1;
-  }
-
-  for (const info of mapping.then.infos) {
-    output += info.length ? info.length : 1;
-  }
-
-  return [input, output];
 }
 
 function batch(...playbooks) {

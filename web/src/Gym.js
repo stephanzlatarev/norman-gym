@@ -19,7 +19,7 @@ export default class Gym extends React.Component {
       tracker: null,
       session: null,
       rank: [],
-      brain: "brain",
+      brain: null,
       progress: [],
       progressTab: 0,
       samples: [],
@@ -64,6 +64,10 @@ export default class Gym extends React.Component {
     if (rank) {
       rank.sort((a, b) => (a.record - b.record));
       this.setState({ rank: rank });
+
+      if (!this.state.brain && rank.length) {
+        this.setState({ brain: rank[0].brain });
+      }
     }
 
     const progress = await Api.get("progress", this.state.brain);

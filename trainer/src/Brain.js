@@ -1,6 +1,6 @@
 import * as tf from "@tensorflow/tfjs-node";
 import { loadBrain, saveBrain } from "./mongo.js";
-import { modelToShape } from "./shape.js";
+import { modelToShape, shapeToInfo } from "./shape.js";
 
 const OPTIMIZER_FUNCTION = "adam";
 const LOSS_FUNCTION = "meanSquaredError";
@@ -32,12 +32,18 @@ export default class Brain {
   reshape(shape) {
     console.log("Creating", shape, "brain...");
 
-    const units = shape.split(":");
+    const info = shapeToInfo(shape);
     const model = tf.sequential();
 
-    model.add(tf.layers.dense({ inputShape: [Number(units[0])], units: Number(units[1]) }));
+    model.add(tf.layers.dense({ inputShape: [info.input], units: Number(info.units) }));
     model.add(tf.layers.leakyReLU());
-    model.add(tf.layers.dense({ units: Number(units[2]) }));
+
+    for (let i = 1; i < info.layers; i++) {
+      model.add(tf.layers.dense({ units: info.units }));
+      model.add(tf.layers.leakyReLU());
+    }
+
+    model.add(tf.layers.dense({ units: info.output }));
     model.add(tf.layers.leakyReLU());
 
     this.model = model;

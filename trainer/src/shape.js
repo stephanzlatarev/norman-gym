@@ -54,7 +54,9 @@ export async function bestShape(brain) {
     const output = leader.output;
 
     const infos = [];
-    for (let layers = 1; layers < leader.layers + 5; layers++) {
+    const minLayers = Math.max(leader.layers - 2, 1);
+    const maxLayers = minLayers + 4;
+    for (let layers = minLayers; layers <= maxLayers; layers++) {
       for (let multi = 1; multi < leader.multi + 5; multi++) {
         const units = input * multi;
         const parameters = input * units + units * units * Math.max(layers - 1, 0) + units * output;

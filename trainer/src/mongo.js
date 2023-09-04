@@ -1,4 +1,5 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, GridFSBucket } from "mongodb";
+import { Readable } from "stream";
 import zlib from "zlib";
 
 let db = null;
@@ -68,11 +69,39 @@ export async function loadBrain(name) {
   if (record) {
     return JSON.parse(zlib.gunzipSync(Buffer.from(record.brain, "base64")).toString("utf-8"));
   }
+
+  const bucket = new GridFSBucket(db);
+  const cursor = bucket.find({ filename: name });
+
+  if (await cursor.hasNext()) {
+    const stream = bucket.openDownloadStreamByName(name);
+
+    if (stream) {
+      return JSON.parse(zlib.gunzipSync(await toBuffer(stream)).toString("utf-8"));
+    }
+  }
 }
 
 export async function saveBrain(name, brain) {
   const db = await connect();
-  const record = zlib.gzipSync(Buffer.from(JSON.stringify(brain), "utf-8")).toString("base64");
+  const bucket = new GridFSBucket(db);
 
-  await db.collection("brain").findOneAndReplace({ name: name }, { name: name, brain: record }, { upsert: true });
+  // Delete previous files
+  const cursor = bucket.find({ filename: name });
+  for await (const file of cursor) {
+    await bucket.delete(file._id);
+  }
+
+  // Store new file
+  const stream = Readable.from(zlib.gzipSync(Buffer.from(JSON.stringify(brain), "utf-8")));
+  stream.pipe(bucket.openUploadStream(name));
 }
+
+function toBuffer(stream) {
+  return new Promise((resolve, reject) => {
+    const buffer = [];
+    stream.on("data", (chunk) => buffer.push(chunk));
+    stream.on("end", () => resolve(Buffer.concat(buffer)));
+    stream.on("error", (error) => reject(error));
+  });
+} 

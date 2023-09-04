@@ -127,8 +127,8 @@ export default class Brain {
     const model = this.model;
 
     await model.save({
-      save: function(model) {
-        saveBrain(name, { ...model, weightData: Array.from(new Uint8Array(model.weightData)) });
+      save: async function(model) {
+        await saveBrain(name, { ...model, weightData: Array.from(new Uint8Array(model.weightData)) });
       }
     });
   }

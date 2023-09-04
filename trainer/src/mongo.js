@@ -6,7 +6,7 @@ let db = null;
 
 async function connect() {
   if (!db) {
-    const client = new MongoClient(process.env.MONGO_URL || "mongodb://mongo:27017");
+    const client = new MongoClient(process.env.MONGO_URL || "mongodb://mongo:27017", { connectTimeoutMS: 0 });
 
     await client.connect();
 

@@ -1,5 +1,7 @@
 import { leaderboard } from "./mongo.js";
 
+const LIMIT_PARAMETERS = 4000000;
+
 export function skillToShape(mapping) {
   let input = 0;
   let output = 0;
@@ -54,12 +56,12 @@ export async function bestShape(brain) {
     const output = leader.output;
 
     const infos = [];
-    const minLayers = Math.max(leader.layers - 2, 1);
-    const maxLayers = minLayers + 4;
-    for (let layers = minLayers; layers <= maxLayers; layers++) {
+    for (let layers = 1; layers <= leader.layers + 2; layers++) {
       for (let multi = 1; multi < leader.multi + 5; multi++) {
         const units = input * multi;
-        const parameters = input * units + units * units * Math.max(layers - 1, 0) + units * output;
+        const parameters = input * units + units * units * Math.max(layers - 1, 0) + units * layers + units * output + output;
+
+        if (parameters > LIMIT_PARAMETERS) continue;
 
         infos.push({
           input: input,
@@ -79,8 +81,9 @@ export async function bestShape(brain) {
       if (infos[leaderIndex].leader) break;
     }
 
-    const startIndex = Math.max(leaderIndex - Math.floor(list.length / 2 - 1), 0);
-    const shapes = infos.slice(startIndex, startIndex + list.length).map(info => infoToShape(info));
+    const endIndex = Math.min(infos.length, leaderIndex + Math.floor(list.length / 2) + 1);
+    const startIndex = Math.max(0, endIndex - list.length);
+    const shapes = infos.slice(startIndex, endIndex).map(info => infoToShape(info));
 
     if (shapes.indexOf(brain.shape) >= 0) {
       // This brain is already in range. If it is the best ranking of all with the exact same shape then it must not change shape.
@@ -92,18 +95,14 @@ export async function bestShape(brain) {
       }
     }
 
-    for (const shape of shapes) {
-      let exists = false;
-      for (const one of list) {
-        if (one.shape === shape) {
-          exists = true;
-          break;
-        }
-      }
+    const freeShapes = shapes.filter(shape => (list.findIndex(one => (one.shape === shape)) < 0));
+    const challengers = list.filter(one => (shapes.indexOf(one.shape) < 0)).sort((a, b) => a.brain.localeCompare(b.brain));
+    const peckingOrder = challengers.findIndex(one => (one.brain === brain.name));
 
-      if (!exists) {
-        return shape;
-      }
+    if (freeShapes[peckingOrder]) {
+      return freeShapes[peckingOrder];
     }
+
+    console.log("No best shape at", peckingOrder, "in", JSON.stringify(freeShapes), "among challengers", JSON.stringify(challengers));
   }
 }

@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "@tensorflow/tfjs-node": "^4.8.0",
-    "mongodb": "^5.7.0"
+    "mongodb": "^6.0.0"
   }
 }

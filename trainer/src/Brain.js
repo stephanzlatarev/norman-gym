@@ -4,6 +4,7 @@ import { modelToShape, shapeToInfo } from "./shape.js";
 
 const OPTIMIZER_FUNCTION = "adam";
 const LOSS_FUNCTION = "meanSquaredError";
+const STORE_FOLDER = process.cwd();
 
 export default class Brain {
 
@@ -13,16 +14,10 @@ export default class Brain {
   }
 
   async load() {
-    const record = await loadBrain(this.name);
-
-    if (record) {
+    if (await loadBrain(this.name, STORE_FOLDER)) {
       console.log("Loading brain...");
 
-      this.model = await tf.loadLayersModel({
-        load: function() {
-          return { ...record, weightData: new Uint8Array(record.weightData).buffer };
-        }
-      });
+      this.model = await tf.loadLayersModel("file://" + STORE_FOLDER + "/model.json");
       this.shape = compile(this.model);
     } else {
       this.reshape(this.shape);
@@ -99,38 +94,9 @@ export default class Brain {
     return result;
   }
 
-  async checkpoint() {
-    let point;
-
-    await this.model.save({
-      save: function(model) {
-        point = JSON.stringify({ ...model, weightData: Array.from(new Uint8Array(model.weightData)) });
-      }
-    });
-
-    return point;
-  }
-
-  async restore(point) {
-    const model = JSON.parse(point);
-
-    this.model = await tf.loadLayersModel({
-      load: function() {
-        return { ...model, weightData: new Uint8Array(model.weightData).buffer };
-      }
-    });
-    this.model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
-  }
-
   async save() {
-    const name = this.name;
-    const model = this.model;
-
-    await model.save({
-      save: async function(model) {
-        await saveBrain(name, { ...model, weightData: Array.from(new Uint8Array(model.weightData)) });
-      }
-    });
+    await this.model.save("file://" + STORE_FOLDER);
+    await saveBrain(this.name, STORE_FOLDER);
   }
 }
 

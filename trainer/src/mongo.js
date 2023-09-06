@@ -1,6 +1,9 @@
+import fs from "fs";
 import { MongoClient, GridFSBucket } from "mongodb";
-import { Readable } from "stream";
-import zlib from "zlib";
+import { finished } from "stream";
+import { promisify } from "util";
+
+const pipelineAsync = promisify(finished);
 
 let db = null;
 
@@ -34,6 +37,7 @@ export async function log(brain, shape, progress) {
   await db.collection("progress").insertOne(progress);
 
   const rank = {
+    time: Date.now(),
     brain: brain,
     shape: shape,
     loss: progress.control.overall.loss,
@@ -62,46 +66,29 @@ export async function leaderboard() {
   return leaderboard;
 }
 
-export async function loadBrain(name) {
+export async function loadBrain(name, folder) {
   const db = await connect();
-  const record = await db.collection("brain").findOne({ name: name });
-
-  if (record) {
-    return JSON.parse(zlib.gunzipSync(Buffer.from(record.brain, "base64")).toString("utf-8"));
-  }
-
   const bucket = new GridFSBucket(db);
-  const cursor = bucket.find({ filename: name });
 
-  if (await cursor.hasNext()) {
-    const stream = bucket.openDownloadStreamByName(name);
+  if (await bucket.find({ metadata: { brain: name } }).hasNext()) {
+    await pipelineAsync(bucket.openDownloadStreamByName(name + "-weights").pipe(fs.createWriteStream(folder + "/weights.bin")));
+    await pipelineAsync(bucket.openDownloadStreamByName(name + "-model").pipe(fs.createWriteStream(folder + "/model.json")));
 
-    if (stream) {
-      return JSON.parse(zlib.gunzipSync(await toBuffer(stream)).toString("utf-8"));
-    }
+    return fs.existsSync(folder + "/model.json");
   }
 }
 
-export async function saveBrain(name, brain) {
+export async function saveBrain(name, folder) {
   const db = await connect();
   const bucket = new GridFSBucket(db);
 
   // Delete previous files
-  const cursor = bucket.find({ filename: name });
+  const cursor = bucket.find({ metadata: { brain: name } });
   for await (const file of cursor) {
     await bucket.delete(file._id);
   }
 
   // Store new file
-  const stream = Readable.from(zlib.gzipSync(Buffer.from(JSON.stringify(brain), "utf-8")));
-  stream.pipe(bucket.openUploadStream(name));
+  await pipelineAsync(fs.createReadStream(folder + "/weights.bin").pipe(bucket.openUploadStream(name + "-weights", { metadata: { brain: name } })));
+  await pipelineAsync(fs.createReadStream(folder + "/model.json").pipe(bucket.openUploadStream(name + "-model", { metadata: { brain: name } })));
 }
-
-function toBuffer(stream) {
-  return new Promise((resolve, reject) => {
-    const buffer = [];
-    stream.on("data", (chunk) => buffer.push(chunk));
-    stream.on("end", () => resolve(Buffer.concat(buffer)));
-    stream.on("error", (error) => reject(error));
-  });
-} 

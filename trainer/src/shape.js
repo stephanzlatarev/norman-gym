@@ -85,18 +85,10 @@ export async function bestShape(brain) {
     const startIndex = Math.max(0, endIndex - list.length);
     const shapes = infos.slice(startIndex, endIndex).map(info => infoToShape(info));
 
-    if (shapes.indexOf(brain.shape) >= 0) {
-      // This brain is already in range. If it is the best ranking of all with the exact same shape then it must not change shape.
-      for (const one of list) {
-        if (one.shape === brain.shape) {
-          if (one.brain === brain.name) return;
-          break;
-        }
-      }
-    }
+    if (!shouldChangeShape(list, shapes, brain.name, brain.shape)) return;
 
     const freeShapes = shapes.filter(shape => (list.findIndex(one => (one.shape === shape)) < 0));
-    const challengers = list.filter(one => (shapes.indexOf(one.shape) < 0)).sort((a, b) => a.brain.localeCompare(b.brain));
+    const challengers = list.filter(one => shouldChangeShape(list, shapes, one.brain, one.shape)).sort((a, b) => a.brain.localeCompare(b.brain));
     const peckingOrder = challengers.findIndex(one => (one.brain === brain.name));
 
     if (freeShapes[peckingOrder]) {
@@ -105,4 +97,16 @@ export async function bestShape(brain) {
 
     console.log("No best shape at", peckingOrder, "in", JSON.stringify(freeShapes), "among challengers", JSON.stringify(challengers));
   }
+}
+
+function shouldChangeShape(brains, shapes, name, shape) {
+  if (shapes.indexOf(shape) < 0) return true;
+
+  for (const one of brains) {
+    if (one.shape === shape) {
+      return (one.brain !== name);
+    }
+  }
+
+  return true;
 }

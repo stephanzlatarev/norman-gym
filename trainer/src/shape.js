@@ -95,7 +95,10 @@ export async function bestShape(brain) {
       return freeShapes[peckingOrder];
     }
 
-    console.log("No best shape at", peckingOrder, "in", JSON.stringify(freeShapes), "among challengers", JSON.stringify(challengers));
+    console.log("No best shape at", peckingOrder,
+      "in", JSON.stringify(freeShapes), "of", JSON.stringify(shapes),
+      "among challengers", JSON.stringify(challengers), "of", JSON.stringify(list),
+    );
   }
 }
 

@@ -1,5 +1,19 @@
 import { sendResponse } from "./http.js";
-import { list } from "./mongo.js";
+import { list, load } from "./mongo.js";
+import zip from "zip-local";
+
+export async function downloadBrain(request, response) {
+  const folder = await load(request.params.brain);
+
+  if (folder) {
+    const file = request.params.brain + ".zip";
+
+    zip.sync.zip(folder).compress().save(file);
+    response.download(file);
+  } else {
+    sendError(response, "Unable to read it from database!");
+  }
+}
 
 export async function read(_, response) {
   const data = {

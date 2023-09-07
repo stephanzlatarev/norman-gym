@@ -1,6 +1,6 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { read, readProgress, readRank, readSessions } from "./data.js";
+import { downloadBrain, read, readProgress, readRank, readSessions } from "./data.js";
 
 const port = process.env.PORT || 3000;
 const app = express();
@@ -11,6 +11,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get("/api", read);
+app.get("/api/download/:brain", downloadBrain);
 app.get("/api/progress/:brain", readProgress);
 app.get("/api/rank", readRank);
 app.get("/api/session", readSessions);

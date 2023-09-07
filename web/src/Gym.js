@@ -94,7 +94,7 @@ export default class Gym extends React.Component {
     }
 
     return (
-      <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} useFlexGap flexWrap="wrap">
+      <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} margin={{ xs: "0rem", sm: "1rem" }} useFlexGap flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}><Controls session={ this.state.session } /></Paper>
 

@@ -55,32 +55,25 @@ export default class Brain {
 
     tf.engine().endScope();
 
-    return {
-      loss: result.history.loss[0],
-      error: result.history.error[0],
-      pass: result.history.pass[0],
-    };
+    return result.history.loss[0];
   }
 
   async evaluate(batch) {
     tf.engine().startScope();
 
     const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
-    const output = tf.tensor(batch.output, [batch.length, batch.outputSize]);
+    const expected = tf.tensor(batch.output, [batch.length, batch.outputSize]);
+    const actual = this.model.predict(input, { batchSize: batch.length, verbose: 0 });
 
-    const result = this.model.evaluate(input, output, { batchSize: batch.length });
-
-    const loss = (await result[this.model.metricsNames.indexOf("loss")].data())[0];
-    const error = (await result[this.model.metricsNames.indexOf("error")].data())[0];
-    const pass = (await result[this.model.metricsNames.indexOf("pass")].data())[0];
+    const evaluation = {
+      loss: await get(loss, actual, expected),
+      error: await get(error, actual, expected),
+      pass: await get(pass, actual, expected),
+    };
 
     tf.engine().endScope();
 
-    return {
-      loss: loss,
-      error: error,
-      pass: pass,
-    };
+    return evaluation;
   }
 
   async predict(batch) {
@@ -95,16 +88,26 @@ export default class Brain {
   }
 
   async save() {
-    await this.model.save("file://" + STORE_FOLDER);
+    await this.model.save("file://" + STORE_FOLDER, { includeOptimizer: true });
     await saveBrain(this.name, STORE_FOLDER);
   }
 }
 
 function compile(model) {
-  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION, metrics: [error, pass] });
+  model.compile({ optimizer: OPTIMIZER_FUNCTION, loss: LOSS_FUNCTION });
   model.summary();
 
   return modelToShape(model);
+}
+
+async function get(metric, actual, expected) {
+  const tensor = metric(actual, expected);
+  const data = await tensor.data();
+  return data[0];
+}
+
+function loss(actual, expected) {
+  return actual.squaredDifference(expected).mean();
 }
 
 function error(actual, expected) {

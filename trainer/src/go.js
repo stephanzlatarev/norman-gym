@@ -13,43 +13,36 @@ async function go() {
   await brain.load();
 
   let time = 0;
-  let controlBatch = samples.batch();
-  let recordLogs = await brain.evaluate(controlBatch);
-  let recordStats = { overall: { ...recordLogs } };
+  let batch = samples.batch();
+  let record = await evaluate(brain, samples, await brain.evaluate(batch));
 
   while (true) {
-    const studyLogs = await brain.fit(samples.batch());
-    const controlLogs = await brain.evaluate(controlBatch);
+    await brain.fit(samples.batch());
 
-    if (controlLogs.loss < recordLogs.loss) {
+    const evaluation = await brain.evaluate(batch);
+
+    if (evaluation.loss < record.overall.loss) {
       await brain.save();
-      recordLogs = controlLogs;
-      recordStats = { overall: { ...recordLogs }, ...(await assessByPlaybook(brain, samples)) };
+      record = await evaluate(brain, samples, evaluation);
     }
 
     const now = new Date().getMinutes();
     const epochEnded = (time > 0) && (time !== now);
 
     if (epochEnded) {
-      await log(brain.name, brain.shape, {
-        resources: resources(),
-        study: { overall: { ...studyLogs } },
-        control: { overall: { ...controlLogs }, ...(await assessByPlaybook(brain, samples)) },
-        record: recordStats,
-      });
+      const control = await evaluate(brain, samples, evaluation);
 
-      await sample(brain.name, "worst", findWorstSample(controlBatch, await brain.predict(controlBatch)));
+      await log(brain.name, brain.shape, { resources: resources(), control: control, record: record });
+      await sample(brain.name, "worst", findWorstSample(batch, await brain.predict(batch)));
 
-      controlBatch = samples.batch();
+      batch = samples.batch();
 
       const shape = await bestShape(brain);
       if (shape && (brain.shape !== shape)) {
         brain.reshape(shape);
 
-        recordLogs = { loss: 1, error: 1, pass: 0 };
-        recordStats = { overall: { ...recordLogs } };
-
         await brain.save();
+        record = await evaluate(brain, samples, await brain.evaluate(batch));
       }
     }
 
@@ -57,8 +50,8 @@ async function go() {
   }
 }
 
-async function assessByPlaybook(brain, samples) {
-  const logs = {};
+async function evaluate(brain, samples, overallEvaluation) {
+  const logs = { overall: overallEvaluation };
 
   for (const playbookBatch of samples.batches()) {
     if (playbookBatch.source.length) {

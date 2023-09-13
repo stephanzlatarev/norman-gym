@@ -19,11 +19,7 @@ export default class Progress extends React.Component {
     for (const point of this.props.progress) {
       for (const playbook in this.props.playbooks) {
         if (!series[playbook]) {
-          series[playbook] = { color: color(this.props.playbooks[playbook]), study: [], control: [], record: [] };
-        }
-
-        if (point.study[playbook]) {
-          series[playbook].study.push(x + "," + y(point.study[playbook][this.props.indicator]));
+          series[playbook] = { color: color(this.props.playbooks[playbook]), control: [], record: [] };
         }
 
         if (point.control[playbook]) {
@@ -41,11 +37,6 @@ export default class Progress extends React.Component {
     const lines = [];
     for (const playbook in series) {
       const data = series[playbook];
-      lines.push(
-        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1, strokeDasharray: "0.1,0.1" }}>
-          <polyline points={ data.study.join(" ")} />
-        </g>
-      );
       lines.push(
         <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1 }}>
           <polyline points={ data.control.join(" ")} />

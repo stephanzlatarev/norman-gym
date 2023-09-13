@@ -1,3 +1,4 @@
+import fs from "fs";
 import * as tf from "@tensorflow/tfjs-node";
 import { loadBrain, saveBrain } from "./mongo.js";
 import { modelToShape, shapeToInfo } from "./shape.js";
@@ -89,6 +90,12 @@ export default class Brain {
 
   async save() {
     await this.model.save("file://" + STORE_FOLDER, { includeOptimizer: true });
+    await this.model.save({
+      save: function(model) {
+        model.weightData = Array.from(new Uint8Array(model.weightData));
+        fs.writeFileSync(STORE_FOLDER + "/brain.tf", JSON.stringify(model));
+      }
+    });
     await saveBrain(this.name, STORE_FOLDER);
   }
 }

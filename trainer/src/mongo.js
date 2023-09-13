@@ -91,4 +91,5 @@ export async function saveBrain(name, folder) {
   // Store new file
   await pipelineAsync(fs.createReadStream(folder + "/weights.bin").pipe(bucket.openUploadStream(name + "-weights", { metadata: { brain: name } })));
   await pipelineAsync(fs.createReadStream(folder + "/model.json").pipe(bucket.openUploadStream(name + "-model", { metadata: { brain: name } })));
+  await pipelineAsync(fs.createReadStream(folder + "/brain.tf").pipe(bucket.openUploadStream(name + "-brain", { metadata: { brain: name } })));
 }

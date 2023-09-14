@@ -1,5 +1,7 @@
 import React from "react";
+import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
+import Api from "./Api";
 
 export default class Controls extends React.Component {
 
@@ -23,6 +25,12 @@ export default class Controls extends React.Component {
 
         <div>PLAYBOOKS</div>
         { playbooks }
+
+        <hr style={{ width: "100%" }} />
+
+        <div>TRAINER</div>
+        <div>{ this.props.brain }</div>
+        <Link href={ Api.url("download", this.props.brain) } target="_blank">Download</Link>
 
       </Stack>
     );

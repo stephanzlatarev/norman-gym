@@ -5,6 +5,9 @@ import { promisify } from "util";
 
 const pipelineAsync = promisify(finished);
 
+const DOWNLOADS = "./downloads/";
+fs.mkdirSync(DOWNLOADS, { recursive: true });
+
 let db = null;
 
 async function connect() {
@@ -28,16 +31,12 @@ export async function list(collection, filter) {
 export async function load(name) {
   const db = await connect();
   const bucket = new GridFSBucket(db);
-  const folder = "./download/" + name;
+  const filenameOnDisk = DOWNLOADS + "/brain.tf";
+  const filenameInDatabase = name + "-brain";
 
-  if (!fs.existsSync(folder)) {
-    fs.mkdirSync(folder, { recursive: true });
-  }
+  if (await bucket.find({ filename: filenameInDatabase }).hasNext()) {
+    await pipelineAsync(bucket.openDownloadStreamByName(filenameInDatabase).pipe(fs.createWriteStream(filenameOnDisk)));
 
-  if (await bucket.find({ metadata: { brain: name } }).hasNext()) {
-    await pipelineAsync(bucket.openDownloadStreamByName(name + "-weights").pipe(fs.createWriteStream(folder + "/weights.bin")));
-    await pipelineAsync(bucket.openDownloadStreamByName(name + "-model").pipe(fs.createWriteStream(folder + "/model.json")));
-
-    return fs.existsSync(folder + "/model.json") ? folder : false;
+    if (fs.existsSync(filenameOnDisk)) return filenameOnDisk;
   }
 }

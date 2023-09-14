@@ -96,7 +96,7 @@ export default class Gym extends React.Component {
     return (
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} margin={{ xs: "0rem", sm: "1rem" }} useFlexGap flexWrap="wrap">
 
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Controls session={ this.state.session } /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}><Controls session={ this.state.session } brain={ this.state.brain } /></Paper>
 
         <Paper elevation={3} sx={{ padding: "0rem" }}>
           <Leaderboard rank={ this.state.rank } selected={ this.state.brain } onSelect={ this.selectBrain.bind(this) } />

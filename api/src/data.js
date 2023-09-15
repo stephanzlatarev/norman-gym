@@ -24,6 +24,12 @@ export async function readProgress(request, response) {
   return sendResponse(response, data);
 }
 
+export async function releaseBrain(request, response) {
+  await update("brains", { brain: request.params.brain }, { skill: null });
+
+  return sendResponse(response, "OK");
+}
+
 export async function lockBrain(request, response) {
   await update("brains", { brain: request.params.brain }, { locked: true });
 

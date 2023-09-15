@@ -67,8 +67,12 @@ export default class Gym extends React.Component {
       brains.sort((a, b) => (a.record - b.record));
       this.setState({ brains: brains });
 
-      if (!this.state.selection && brains.length) {
-        this.setState({ selection: brains[0].brain });
+      if (brains.length) {
+        if (!this.state.selection || !brains.find(one => (one.brain === this.state.selection))) {
+          this.setState({ selection: brains[0].brain });
+        }
+      } else {
+        this.setState({ selection: null });
       }
     }
 

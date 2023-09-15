@@ -12,6 +12,13 @@ export default class Controls extends React.Component {
     }
   }
 
+  async releaseBrain() {
+    if (this.props.brain) {
+      await Api.post({}, "brains", this.props.brain.brain, "release");
+      await this.props.refresh();
+    }
+  }
+
   render() {
     if (!this.props.session || !this.props.brain) return null;
 
@@ -39,6 +46,11 @@ export default class Controls extends React.Component {
         <div>{ this.props.brain.brain }</div>
         <Link sx={{ cursor: "pointer" }} onClick={ this.toggleLock.bind(this) }>{ this.props.brain.locked ? "Unlock" : "Lock" } shape</Link>
         <Link href={ Api.url("brains", this.props.brain.brain, "download") } target="_blank">Download</Link>
+        {
+          !this.props.brain.locked
+          ? (<Link sx={{ cursor: "pointer" }} onClick={ this.releaseBrain.bind(this) }>Release</Link>)
+          : null
+        }
 
       </Stack>
     );

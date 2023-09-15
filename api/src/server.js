@@ -1,6 +1,6 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { downloadBrain, lockBrain, readBrains, readProgress, readSessions, unlockBrain } from "./data.js";
+import { downloadBrain, lockBrain, readBrains, readProgress, readSessions, releaseBrain, unlockBrain } from "./data.js";
 
 const port = process.env.PORT || 3000;
 const app = express();
@@ -16,6 +16,7 @@ app.get("/api/brains/:brain/progress", readProgress);
 app.get("/api/sessions", readSessions);
 
 app.post("/api/brains/:brain/lock", lockBrain);
+app.post("/api/brains/:brain/release", releaseBrain);
 app.post("/api/brains/:brain/unlock", unlockBrain);
 
 export const server = app.listen(port, () => {

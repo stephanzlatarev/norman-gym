@@ -5,11 +5,13 @@ import { findWorstSample } from "./analysis.js";
 import { log, sample, session } from "./mongo.js";
 import { bestShape } from "./shape.js";
 
+const BRAIN_NAME = process.env.HOSTNAME;
+
 async function go() {
   const samples = new Samples();
-  await session(await samples.init());
+  await session(BRAIN_NAME, await samples.init());
 
-  const brain = new Brain(process.env.HOSTNAME, samples.shape);
+  const brain = new Brain(BRAIN_NAME, samples.shape);
   await brain.load();
 
   let time = 0;

@@ -46,7 +46,7 @@ export function infoToShape(info) {
 }
 
 export async function bestShape(brain) {
-  const list = await leaderboard();
+  const list = await leaderboard(brain.name);
 
   if (list.length > 1) {
     list.sort((a, b) => (a.record - b.record));

@@ -1,5 +1,5 @@
 import { sendError, sendResponse } from "./http.js";
-import { list, load } from "./mongo.js";
+import { list, load, update } from "./mongo.js";
 
 export async function downloadBrain(request, response) {
   const file = await load(request.params.brain);
@@ -11,13 +11,8 @@ export async function downloadBrain(request, response) {
   }
 }
 
-export async function read(_, response) {
-  const data = {
-    progress: await list("progress", {}),
-    samples: await list("samples", {}),
-  };
-
-  return sendResponse(response, data);
+export async function readBrains(_, response) {
+  return sendResponse(response, await list("brains", {}));
 }
 
 export async function readProgress(request, response) {
@@ -27,6 +22,18 @@ export async function readProgress(request, response) {
   };
 
   return sendResponse(response, data);
+}
+
+export async function lockBrain(request, response) {
+  await update("brains", { brain: request.params.brain }, { locked: true });
+
+  return sendResponse(response, "OK");
+}
+
+export async function unlockBrain(request, response) {
+  await update("brains", { brain: request.params.brain }, { locked: false });
+
+  return sendResponse(response, "OK");
 }
 
 export async function readRank(_, response) {

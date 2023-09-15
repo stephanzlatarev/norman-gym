@@ -19,8 +19,8 @@ export default class Gym extends React.Component {
     this.state = {
       tracker: null,
       session: null,
-      rank: [],
-      brain: null,
+      brains: [],
+      selection: null,
       progress: [],
       progressTab: 0,
       samples: [],
@@ -39,7 +39,7 @@ export default class Gym extends React.Component {
   }
 
   selectBrain(brain) {
-    this.setState({ brain: brain });
+    this.setState({ selection: brain });
     this.refresh();
   }
 
@@ -52,7 +52,7 @@ export default class Gym extends React.Component {
   }
 
   async refresh() {
-    const sessions = await Api.get("session");
+    const sessions = await Api.get("sessions");
 
     if (sessions && sessions.length) {
       const session = sessions[0];
@@ -60,21 +60,25 @@ export default class Gym extends React.Component {
       this.setState({ session: session });
     }
 
-    const rank = await Api.get("rank");
+    const brains = await Api.get("brains");
 
-    if (rank) {
-      rank.sort((a, b) => (a.record - b.record));
-      this.setState({ rank: rank });
+    if (brains) {
+      brains.sort((a, b) => (a.record - b.record));
+      this.setState({ brains: brains });
 
-      if (!this.state.brain && rank.length) {
-        this.setState({ brain: rank[0].brain });
+      if (!this.state.selection && brains.length) {
+        this.setState({ selection: brains[0].brain });
       }
     }
 
-    const progress = await Api.get("progress", this.state.brain);
+    if (this.state.selection) {
+      const progress = await Api.get("brains", this.state.selection, "progress");
 
-    if (progress) {
-      this.setState({ progress: progress.progress, samples: progress.samples });
+      if (progress) {
+        this.setState({ progress: progress.progress, samples: progress.samples });
+      }
+    } else {
+      this.setState({ progress: [], samples: [] });
     }
   }
 
@@ -96,10 +100,12 @@ export default class Gym extends React.Component {
     return (
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} margin={{ xs: "0rem", sm: "1rem" }} useFlexGap flexWrap="wrap">
 
-        <Paper elevation={3} sx={{ padding: "1rem" }}><Controls session={ this.state.session } brain={ this.state.brain } /></Paper>
+        <Paper elevation={3} sx={{ padding: "1rem" }}>
+          <Controls session={ this.state.session } brain={ this.state.brains.find(one => (one.brain === this.state.selection)) } refresh={ this.refresh.bind(this) } />
+        </Paper>
 
         <Paper elevation={3} sx={{ padding: "0rem" }}>
-          <Leaderboard rank={ this.state.rank } selected={ this.state.brain } onSelect={ this.selectBrain.bind(this) } />
+          <Leaderboard brains={ this.state.brains } selected={ this.state.selection } onSelect={ this.selectBrain.bind(this) } />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>

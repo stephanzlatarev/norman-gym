@@ -5,8 +5,15 @@ import Api from "./Api";
 
 export default class Controls extends React.Component {
 
+  async toggleLock() {
+    if (this.props.brain) {
+      await Api.post({}, "brains", this.props.brain.brain, this.props.brain.locked ? "unlock" : "lock");
+      await this.props.refresh();
+    }
+  }
+
   render() {
-    if (!this.props.session) return null;
+    if (!this.props.session || !this.props.brain) return null;
 
     const playbooks = [];
     for (const playbook in this.props.session.playbooks) {
@@ -28,9 +35,10 @@ export default class Controls extends React.Component {
 
         <hr style={{ width: "100%" }} />
 
-        <div>TRAINER</div>
-        <div>{ this.props.brain }</div>
-        <Link href={ Api.url("download", this.props.brain) } target="_blank">Download</Link>
+        <div>BRAIN</div>
+        <div>{ this.props.brain.brain }</div>
+        <Link sx={{ cursor: "pointer" }} onClick={ this.toggleLock.bind(this) }>{ this.props.brain.locked ? "Unlock" : "Lock" } shape</Link>
+        <Link href={ Api.url("brains", this.props.brain.brain, "download") } target="_blank">Download</Link>
 
       </Stack>
     );

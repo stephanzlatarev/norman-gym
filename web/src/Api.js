@@ -4,13 +4,13 @@ const API = "https://ngym.ddns.net/api/";
 
 class Api {
 
-  url(entity, object) {
-    return API + entity + (object ? "/" + object : "");
+  url(...path) {
+    return API + path.join("/");
   }
 
-  async get(entity, object) {
+  async get(...path) {
     try {
-      const response = await axios.get(this.url(entity, object));
+      const response = await axios.get(this.url(...path));
 
       if (response.status === 200) {
         return response.data;
@@ -20,9 +20,9 @@ class Api {
     }
   }
 
-  async post(entity, body) {
+  async post(data, ...path) {
     try {
-      const response = await axios.post(this.url(entity), body);
+      const response = await axios.post(this.url(...path), data);
 
       if (response.status === 200) {
         return response.data;

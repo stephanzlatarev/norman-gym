@@ -40,3 +40,9 @@ export async function load(name) {
     if (fs.existsSync(filenameOnDisk)) return filenameOnDisk;
   }
 }
+
+export async function update(collection, filter, data) {
+  const db = await connect();
+
+  await db.collection(collection).updateOne(filter, { $set: data }, { upsert: true });
+}

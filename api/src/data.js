@@ -36,10 +36,6 @@ export async function unlockBrain(request, response) {
   return sendResponse(response, "OK");
 }
 
-export async function readRank(_, response) {
-  return sendResponse(response, await list("rank", {}));
-}
-
 export async function readSessions(_, response) {
   return sendResponse(response, await list("sessions", {}));
 }

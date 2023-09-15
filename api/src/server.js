@@ -1,6 +1,6 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { downloadBrain, lockBrain, readBrains, readProgress, readRank, readSessions, unlockBrain } from "./data.js";
+import { downloadBrain, lockBrain, readBrains, readProgress, readSessions, unlockBrain } from "./data.js";
 
 const port = process.env.PORT || 3000;
 const app = express();

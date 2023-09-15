@@ -12,7 +12,7 @@ async function go() {
   const playbook = await samples.init();
   await session(BRAIN_NAME, playbook);
 
-  const brain = new Brain(BRAIN_NAME, samples.shape);
+  const brain = new Brain(BRAIN_NAME, playbook.skill, samples.shape);
   await brain.load();
 
   let time = 0;
@@ -35,7 +35,7 @@ async function go() {
     if (epochEnded) {
       const control = await evaluate(brain, samples, evaluation);
 
-      await log(brain.name, playbook.skill, brain.shape, { resources: resources(), control: control, record: record });
+      await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: control, record: record });
       await sample(brain.name, "worst", findWorstSample(batch, await brain.predict(batch)));
 
       batch = samples.batch();

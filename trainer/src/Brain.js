@@ -9,8 +9,9 @@ const STORE_FOLDER = process.cwd();
 
 export default class Brain {
 
-  constructor(name, shape) {
+  constructor(name, skill, shape) {
     this.name = name;
+    this.skill = skill;
     this.shape = shape;
   }
 

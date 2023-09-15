@@ -46,7 +46,9 @@ export function infoToShape(info) {
 }
 
 export async function bestShape(brain) {
-  const list = await leaderboard(brain.name);
+  if (brain.locked) return;
+
+  const list = await leaderboard(brain.name, brain.skill);
 
   if (list.length > 1) {
     list.sort((a, b) => (a.record - b.record));
@@ -88,7 +90,7 @@ export async function bestShape(brain) {
     if (!shouldChangeShape(list, shapes, brain.name, brain.shape)) return;
 
     const freeShapes = shapes.filter(shape => (list.findIndex(one => (one.shape === shape)) < 0));
-    const challengers = list.filter(one => shouldChangeShape(list, shapes, one.brain, one.shape)).sort((a, b) => a.brain.localeCompare(b.brain));
+    const challengers = list.filter(one => shouldChangeShape(list, shapes, one.brain, one.shape, one.locked)).sort((a, b) => a.brain.localeCompare(b.brain));
     const peckingOrder = challengers.findIndex(one => (one.brain === brain.name));
 
     if (freeShapes[peckingOrder]) {
@@ -102,7 +104,8 @@ export async function bestShape(brain) {
   }
 }
 
-function shouldChangeShape(brains, shapes, name, shape) {
+function shouldChangeShape(brains, shapes, name, shape, locked) {
+  if (locked) return false;
   if (shapes.indexOf(shape) < 0) return true;
 
   for (const one of brains) {

@@ -50,9 +50,6 @@ export async function log(brain, skill, shape, progress) {
   };
 
   await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
-
-  // TODO: Deprecated. Remove the line
-  await db.collection("rank").findOneAndReplace({ brain: brain }, status, { upsert: true });
 }
 
 export async function sample(brain, label, sample) {
@@ -63,11 +60,10 @@ export async function sample(brain, label, sample) {
   await db.collection("samples").findOneAndReplace({ brain: brain, label: label }, sample, { upsert: true });
 }
 
-export async function leaderboard(brain) {
+export async function leaderboard(brain, skill) {
   const db = await connect(brain);
 
-  // TODO: Remplace "rank" with "brains"
-  const leaderboard = await db.collection("rank").find({}).toArray();
+  const leaderboard = await db.collection("brains").find({ skill: skill }).toArray();
 
   leaderboard.sort((a, b) => (a.record - b.record));
 

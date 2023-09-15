@@ -74,11 +74,14 @@ export async function loadBrain(brain, folder) {
   const db = await connect(brain);
   const bucket = new GridFSBucket(db);
 
-  if (await bucket.find({ metadata: { brain: brain } }).hasNext()) {
+  if (await bucket.find({ filename: brain + "-weights" }).hasNext()) {
     await pipelineAsync(bucket.openDownloadStreamByName(brain + "-weights").pipe(fs.createWriteStream(folder + "/weights.bin")));
-    await pipelineAsync(bucket.openDownloadStreamByName(brain + "-model").pipe(fs.createWriteStream(folder + "/model.json")));
 
-    return fs.existsSync(folder + "/model.json");
+    if (await bucket.find({ filename: brain + "-model" }).hasNext()) {
+      await pipelineAsync(bucket.openDownloadStreamByName(brain + "-model").pipe(fs.createWriteStream(folder + "/model.json")));
+
+      return fs.existsSync(folder + "/model.json");
+    }
   }
 }
 

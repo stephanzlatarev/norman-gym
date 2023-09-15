@@ -31,7 +31,7 @@ export async function session(brain, meta) {
   await db.collection("sessions").findOneAndReplace({ id: 1 }, meta, { upsert: true });
 }
 
-export async function log(brain, shape, progress) {
+export async function log(brain, skill, shape, progress) {
   const db = await connect(brain);
 
   progress.brain = brain;
@@ -40,6 +40,7 @@ export async function log(brain, shape, progress) {
 
   const status = {
     brain: brain,
+    skill: skill,
     shape: shape,
     record: progress.record.overall.loss,
     time: Date.now(),

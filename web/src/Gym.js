@@ -60,9 +60,10 @@ export default class Gym extends React.Component {
       this.setState({ session: session });
     }
 
-    const brains = await Api.get("brains");
+    let brains = await Api.get("brains");
 
     if (brains) {
+      brains = brains.filter(one => (one.skill === this.state.session.skill));
       brains.sort((a, b) => (a.record - b.record));
       this.setState({ brains: brains });
 

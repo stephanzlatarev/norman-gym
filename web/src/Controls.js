@@ -52,10 +52,6 @@ export default class Controls extends React.Component {
           : null
         }
 
-        <hr style={{ width: "100%" }} />
-
-        <div>{ this.props.free } free brains</div>
-
       </Stack>
     );
   }

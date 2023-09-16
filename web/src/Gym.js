@@ -20,7 +20,6 @@ export default class Gym extends React.Component {
       tracker: null,
       session: null,
       brains: [],
-      free: 0,
       selection: null,
       progress: [],
       progressTab: 0,
@@ -53,6 +52,8 @@ export default class Gym extends React.Component {
   }
 
   async refresh() {
+    await this.props.refresh();
+
     const sessions = await Api.get("sessions");
 
     if (sessions && sessions.length) {
@@ -64,11 +65,9 @@ export default class Gym extends React.Component {
     let brains = await Api.get("brains");
 
     if (brains) {
-      const total = brains.length;
-
       brains = brains.filter(one => (one.skill === this.state.session.skill));
       brains.sort((a, b) => (a.record - b.record));
-      this.setState({ brains: brains, free: total - brains.length });
+      this.setState({ brains: brains });
 
       if (brains.length) {
         if (!this.state.selection || !brains.find(one => (one.brain === this.state.selection))) {
@@ -78,7 +77,7 @@ export default class Gym extends React.Component {
         this.setState({ selection: null });
       }
     } else {
-      this.setState({ brains: brains, selection: null, free: 0 });
+      this.setState({ brains: brains, selection: null });
     }
 
     if (this.state.selection) {
@@ -113,7 +112,7 @@ export default class Gym extends React.Component {
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} margin={{ xs: "0rem", sm: "1rem" }} useFlexGap flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
-          <Controls session={ this.state.session } brain={ brain } free={ this.state.free } refresh={ this.refresh.bind(this) } />
+          <Controls session={ this.state.session } brain={ brain } refresh={ this.refresh.bind(this) } />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "0rem" }}>

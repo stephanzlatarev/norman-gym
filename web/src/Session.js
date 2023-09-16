@@ -17,9 +17,6 @@ export default class Session extends React.Component {
     super();
 
     this.state = {
-      tracker: null,
-      session: null,
-      brains: [],
       selection: null,
       progress: [],
       progressTab: 0,
@@ -28,19 +25,36 @@ export default class Session extends React.Component {
     };
   }
 
-  async componentDidMount() {
-    await this.refresh();
+  async componentDidUpdate(props, prevstate) {
+    const state = {};
 
-    this.setState({ tracker: setInterval(this.refresh.bind(this), 10000) });
-  }
+    if (
+      (this.props.tick !== props.tick) ||
+      (this.props.brains.length && (!this.state.selection || (this.state.selection !== prevstate.selection)))
+    ) {
+      if (this.props.brains.length) {
+        if (!this.state.selection || !this.props.brains.find(one => (one.brain === this.state.selection))) {
+          state.selection = this.props.brains[0].brain;
+        }
 
-  componentWillUnmount() {
-    if (this.state.tracker) clearInterval(this.state.tracker);
+        const progress = await Api.get("brains", this.state.selection || state.selection, "progress");
+
+        if (progress) {
+          state.progress = progress.progress;
+          state.samples = progress.samples;
+        }
+      } else {
+        state.selection = null;
+        state.progress = [];
+        state.samples = [];
+      }
+
+      this.setState(state);
+    }
   }
 
   selectBrain(brain) {
     this.setState({ selection: brain });
-    this.refresh();
   }
 
   changeProgressTab(_, newValue) {
@@ -51,48 +65,8 @@ export default class Session extends React.Component {
     this.setState({ samplesTab: newValue });
   }
 
-  async refresh() {
-    await this.props.refresh();
-
-    const sessions = await Api.get("sessions");
-
-    if (sessions && sessions.length) {
-      const session = sessions[0];
-      session.playbooks["overall"] = { color: "black" };
-      this.setState({ session: session });
-    }
-
-    let brains = await Api.get("brains");
-
-    if (brains) {
-      brains = brains.filter(one => (one.skill === this.state.session.skill));
-      brains.sort((a, b) => (a.record - b.record));
-      this.setState({ brains: brains });
-
-      if (brains.length) {
-        if (!this.state.selection || !brains.find(one => (one.brain === this.state.selection))) {
-          this.setState({ selection: brains[0].brain });
-        }
-      } else {
-        this.setState({ selection: null });
-      }
-    } else {
-      this.setState({ brains: brains, selection: null });
-    }
-
-    if (this.state.selection) {
-      const progress = await Api.get("brains", this.state.selection, "progress");
-
-      if (progress) {
-        this.setState({ progress: progress.progress, samples: progress.samples });
-      }
-    } else {
-      this.setState({ progress: [], samples: [] });
-    }
-  }
-
   render() {
-    const playbooks = this.state.session ? this.state.session.playbooks : {};
+    this.props.brains.sort((a, b) => (a.record - b.record));
 
     const samplesTabs = [];
     const samplesViews = [];
@@ -106,17 +80,18 @@ export default class Session extends React.Component {
       );
     }
 
-    const brain = this.state.brains.find(one => (one.brain === this.state.selection));
+    const playbooks = this.props.session.playbooks;
+    const brain = this.props.brains.find(one => (one.brain === this.state.selection));
 
     return (
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} margin={{ xs: "0rem", sm: "1rem" }} useFlexGap flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
-          <Controls session={ this.state.session } brain={ brain } refresh={ this.refresh.bind(this) } />
+          <Controls session={ this.props.session } brain={ brain } refresh={ this.props.refresh } />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "0rem" }}>
-          <Leaderboard brains={ this.state.brains } selected={ this.state.selection } onSelect={ this.selectBrain.bind(this) } />
+          <Leaderboard brains={ this.props.brains } selected={ this.state.selection } onSelect={ this.selectBrain.bind(this) } />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>

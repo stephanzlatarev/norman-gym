@@ -11,7 +11,7 @@ import Progress from "./Progress";
 import Resource from "./Resource";
 import Sample from "./Sample";
 
-export default class Gym extends React.Component {
+export default class Session extends React.Component {
 
   constructor() {
     super();

@@ -1,7 +1,7 @@
 import React from "react";
 import Alert from "@mui/material/Alert";
 import Api from "./Api";
-import Gym from "./Gym";
+import Session from "./Session";
 
 export default class App extends React.Component {
 
@@ -40,7 +40,7 @@ export default class App extends React.Component {
 
         { alert }
 
-        <Gym refresh={ this.refresh.bind(this) } />
+        <Session refresh={ this.refresh.bind(this) } />
 
       </div>
     );

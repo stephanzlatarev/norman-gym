@@ -1,5 +1,6 @@
 import React from "react";
 import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
 import Api from "./Api";
 import Session from "./Session";
 
@@ -61,7 +62,10 @@ export default class App extends React.Component {
     return (
       <div className="App">
         { alert }
-        { sessions }
+
+        <Stack spacing={2} direction="column" margin={{ xs: "0rem", sm: "1rem" }}>
+          { sessions }
+        </Stack>
       </div>
     );
   }

@@ -84,7 +84,7 @@ export default class Session extends React.Component {
     const brain = this.props.brains.find(one => (one.brain === this.state.selection));
 
     return (
-      <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} margin={{ xs: "0rem", sm: "1rem" }} useFlexGap flexWrap="wrap">
+      <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} useFlexGap flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
           <Controls session={ this.props.session } brain={ brain } refresh={ this.props.refresh } />
@@ -120,7 +120,7 @@ export default class Session extends React.Component {
           { samplesViews }
         </Paper>
 
-        </Stack>
+      </Stack>
     );
   }
 }

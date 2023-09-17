@@ -1,95 +1,113 @@
-import os from "os";
 import Brain from "./Brain.js";
-import Samples from "./Samples.js";
+import Playbook from "./Playbook.js";
 import { findWorstSample } from "./analysis.js";
-import { log, sample, session } from "./mongo.js";
+import { log, readStatus, refreshStatus, sample } from "./mongo.js";
+import resources from "./resources.js";
 import { bestShape } from "./shape.js";
 
-const BRAIN_NAME = process.env.HOSTNAME;
+const BRAIN_NAME = process.env.HOSTNAME || "brain";
+
+let skill;
+let playbook;
+let brain;
+let batch;
+let epoch;
+let record;
 
 async function go() {
-  const samples = new Samples();
-  const playbook = await samples.init();
-  await session(BRAIN_NAME, playbook);
-
-  const brain = new Brain(BRAIN_NAME, playbook.skill, samples.shape);
-  await brain.load();
-
-  let time = 0;
-  let batch = samples.batch();
-  let record = await evaluate(brain, samples, await brain.evaluate(batch));
+  let status = await readStatus(BRAIN_NAME);
 
   while (true) {
-    await brain.fit(samples.batch());
+    if (status && status.skill) {
+      await openEpoch(status);
+      await train();
+    } else {
+      skill = null;
+      await skipEpoch();
+    }
+
+    status = await readStatus(BRAIN_NAME);
+    if (status && status.skill && (skill === status.skill)) {
+      await closeEpoch();
+    } else {
+      await refreshStatus(BRAIN_NAME);
+    }
+  }
+}
+
+async function skipEpoch() {
+  const secondsToSkip = 60 - new Date().getSeconds();
+  await new Promise(resolve => setTimeout(resolve, 1000 * secondsToSkip));
+}
+
+async function openEpoch(status) {
+  if (skill !== status.skill) {
+    skill = status.skill;
+    record = null;
+
+    playbook = new Playbook(skill);
+    await playbook.load();
+
+    brain = new Brain(BRAIN_NAME, playbook.meta.skill, playbook.meta.shape);
+    await brain.load();
+  }
+
+  const shape = await bestShape(brain);
+  if (shape && (brain.shape !== shape)) {
+    brain.reshape(shape);
+    record = null;
+  }
+
+  batch = playbook.batch();
+
+  if (!record) {
+    await setRecord();
+  }
+
+  epoch = new Date().getMinutes();
+}
+
+async function train() {
+  while (epoch === new Date().getMinutes()) {
+    await brain.fit(playbook.batch());
 
     const evaluation = await brain.evaluate(batch);
 
     if (evaluation.loss < record.overall.loss) {
-      await brain.save();
-      record = await evaluate(brain, samples, evaluation);
+      await setRecord(evaluation);
     }
-
-    const now = new Date().getMinutes();
-    const epochEnded = (time > 0) && (time !== now);
-
-    if (epochEnded) {
-      const control = await evaluate(brain, samples, evaluation);
-
-      await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: control, record: record });
-      await sample(brain.name, "worst", findWorstSample(batch, await brain.predict(batch)));
-
-      batch = samples.batch();
-
-      const shape = await bestShape(brain);
-      if (shape && (brain.shape !== shape)) {
-        brain.reshape(shape);
-
-        await brain.save();
-        record = await evaluate(brain, samples, await brain.evaluate(batch));
-      }
-    }
-
-    time = now;
   }
 }
 
-async function evaluate(brain, samples, overallEvaluation) {
+async function closeEpoch() {
+  const prediction = await brain.predict(batch);
+  const evaluation = await brain.evaluate(batch);
+  const control = await evaluate(brain, playbook, evaluation);
+
+  await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: control, record: record });
+  await sample(brain.name, "worst", findWorstSample(batch, prediction));
+}
+
+async function setRecord(evaluation) {
+  const status = await readStatus(BRAIN_NAME);
+  if (status && status.skill && (skill === status.skill)) {
+    record = await evaluate(brain, playbook, evaluation || await brain.evaluate(batch));
+
+    await brain.save();
+    await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: record, record: record });
+  }
+}
+
+async function evaluate(brain, playbook, overallEvaluation) {
   const logs = { overall: overallEvaluation };
 
-  for (const playbookBatch of samples.batches()) {
-    if (playbookBatch.source.length) {
-      logs[playbookBatch.source[0]] = await brain.evaluate(playbookBatch);
+  for (const batch of playbook.batches()) {
+    if (batch.source.length) {
+      logs[batch.source[0]] = await brain.evaluate(batch);
     }
   }
 
   return logs;
-}
-
-let clock = 0;
-let cpu = 0;
-
-function resources() {
-  const clocknow = Date.now();
-  const totalmem = os.totalmem();
-  const freemem = os.freemem();
-
-  let cpunow = 0;
-  let cpucount = 0;
-
-  for (const one of os.cpus()) {
-    cpunow += one.times.user;
-    cpucount++;
-  }
-
-  const measurement = {
-    cpu: ((cpunow - cpu) / cpucount / (clocknow - clock)),
-    ram: (totalmem - freemem) / totalmem,
-  };
-
-  clock = clocknow;
-  cpu = cpunow;
-
-  return measurement;
 }
 
 go();

@@ -17,18 +17,22 @@ async function connect(brain) {
 
     db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 } );
 
-    await db.collection("brains").updateOne({ brain: brain }, { $set: { brain: brain } }, { upsert: true });
+    await refreshStatus(brain);
   }
 
   return db;
 }
 
-export async function session(brain, meta) {
+export async function readStatus(brain) {
   const db = await connect(brain);
 
-  meta.id = 1;
+  return await db.collection("brains").findOne({ brain: brain });
+}
 
-  await db.collection("sessions").findOneAndReplace({ id: 1 }, meta, { upsert: true });
+export async function refreshStatus(brain) {
+  const db = await connect(brain);
+
+  await db.collection("brains").updateOne({ brain: brain }, { $set: { brain: brain, time: Date.now() } }, { upsert: true });
 }
 
 export async function log(brain, skill, shape, progress) {

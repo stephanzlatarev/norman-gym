@@ -4,32 +4,36 @@ import { skillToShape } from "./shape.js";
 const BATCH_SIZE = 10000;
 const COLORS = ["green", "blue", "orange", "red", "pink", "brown"];
 
-export default class Samples {
+export default class Playbook {
 
-  async init() {
+  constructor(skill) {
+    this.skill = skill;
+    this.folder = "./repo/" + skill.split("/").slice(5).join("/");
+  }
+
+  async load() {
+    const mapping = JSON.parse(fs.readFileSync(this.folder + "/mapping.json"));
+
     this.playbooks = [];
-
-    const mapping = JSON.parse(fs.readFileSync("./src/playbook/mapping.json"));
-
-    this.shape = skillToShape(mapping);
-
-    const meta = { skill: mapping.label, playbooks: {} };
+    this.meta = {
+      skill: this.skill,
+      shape: skillToShape(mapping),
+      playbooks: {},
+    };
 
     const colors = [...COLORS];
-    const scripts = fs.readdirSync("./src/playbook/").filter(name => name.endsWith(".js"));
+    const scripts = fs.readdirSync(this.folder + "/playbook/").filter(name => name.endsWith(".js"));
 
     for (const script of scripts) {
-      const module = await import("./playbook/" + script);
+      const module = await import("." + this.folder + "/playbook/" + script);
       const name = script.substring(0, script.length - 3);
 
-      meta.playbooks[name] = { color: colors.shift() };
+      this.meta.playbooks[name] = { color: colors.shift() };
       this.playbooks.push({
         name: name,
         sample: module.default,
       });
     }
-
-    return meta;
   }
 
   batch() {

@@ -1,6 +1,8 @@
 import fs from "fs";
+import { spawnSync } from "child_process";
 import { skillToShape } from "./shape.js";
 
+const REPO_FOLDER = "./repo";
 const BATCH_SIZE = 10000;
 const COLORS = ["green", "blue", "orange", "red", "pink", "brown"];
 
@@ -8,10 +10,20 @@ export default class Playbook {
 
   constructor(skill) {
     this.skill = skill;
-    this.folder = "./repo/" + skill.split("/").slice(5).join("/");
+    this.repo = skill.split("/").slice(0, 5).join("/");
+    this.folder = REPO_FOLDER + "/" + skill.split("/").slice(4).join("/");
   }
 
   async load() {
+    fs.rmSync(REPO_FOLDER, { recursive: true, force: true });
+    fs.mkdirSync(REPO_FOLDER);
+
+    const result = spawnSync("git", ["clone", this.repo], { cwd: REPO_FOLDER });
+    for (const line of result.output) if (line) console.log(line.toString());
+    console.log(result.stdout.toString());
+    console.log(result.stderr.toString());
+    if (result.status) throw new Error("Could not clone repo. Status: " + result.status);
+
     const mapping = JSON.parse(fs.readFileSync(this.folder + "/mapping.json"));
 
     this.playbooks = [];

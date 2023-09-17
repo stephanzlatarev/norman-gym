@@ -25,19 +25,30 @@ export async function readProgress(request, response) {
 }
 
 export async function releaseBrain(request, response) {
-  await update("brains", { brain: request.params.brain }, { skill: null });
-
-  return sendResponse(response, "OK");
+  return updateBrainWithProperties(request, response, { skill: null });
 }
 
 export async function lockBrain(request, response) {
-  await update("brains", { brain: request.params.brain }, { locked: true });
-
-  return sendResponse(response, "OK");
+  return updateBrainWithProperties(request, response, { locked: true });
 }
 
 export async function unlockBrain(request, response) {
-  await update("brains", { brain: request.params.brain }, { locked: false });
+  return updateBrainWithProperties(request, response, { locked: false });
+}
+
+export async function updateBrain(request, response) {
+  const properties = {};
+
+  if (request.body.locked !== undefined) properties["locked"] = request.body.locked;
+  if (request.body.skill !== undefined) properties["skill"] = request.body.skill;
+
+  return updateBrainWithProperties(request, response, properties);
+}
+
+async function updateBrainWithProperties(request, response, properties) {
+  if (request.params.brain && request.params.brain.length) {
+    await update("brains", { brain: request.params.brain }, properties);
+  }
 
   return sendResponse(response, "OK");
 }

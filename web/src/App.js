@@ -15,6 +15,7 @@ export default class App extends React.Component {
       sessions: [],
       brains: [],
       free: 0,
+      freeBrain: null,
     };
   }
 
@@ -35,10 +36,14 @@ export default class App extends React.Component {
     const brains = await Api.get("brains");
     if (brains) {
       state.brains = brains;
-      state.free = brains.filter(one => !one.skill).length;
+
+      const freeBrains = brains.filter(one => !one.skill);
+      state.free = freeBrains.length;
+      state.freeBrain = freeBrains.length ? freeBrains[0].brain : null;
     } else {
       state.brains = [];
       state.free = 0;
+      state.freeBrain = null;
     }
 
     const sessions = await Api.get("sessions");
@@ -48,14 +53,17 @@ export default class App extends React.Component {
   }
 
   render() {
-    const alert = this.state.free ? (<Alert severity="info">{ this.state.free } free brains.</Alert>) : null;
+    const alert = this.state.free ? (<Alert severity="info">{ this.state.free } free { (this.state.free === 1) ? "brain" : "brains" }.</Alert>) : null;
 
     const sessions = [];
     for (const session of this.state.sessions) {
       const brains = this.state.brains.filter(one => (one.skill === session.skill));
       session.playbooks["overall"] = { color: "black" };
       sessions.push(
-        <Session key={ session.skill } tick={ this.state.tick } session={ session } brains={ brains } refresh={ this.refresh.bind(this) } />
+        <Session key={ session.skill } tick={ this.state.tick }
+          session={ session } brains={ brains } freeBrain={ this.state.freeBrain }
+          refresh={ this.refresh.bind(this) }
+        />
       );
     }
 

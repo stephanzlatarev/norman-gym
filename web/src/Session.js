@@ -66,6 +66,12 @@ export default class Session extends React.Component {
   }
 
   render() {
+    if (!this.props.brains.length) {
+      return (
+        <Controls session={ this.props.session } freeBrain={ this.props.freeBrain } refresh={ this.props.refresh } />
+      );
+    }
+
     this.props.brains.sort((a, b) => (a.record - b.record));
 
     const samplesTabs = [];
@@ -87,7 +93,7 @@ export default class Session extends React.Component {
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} useFlexGap flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
-          <Controls session={ this.props.session } brain={ brain } refresh={ this.props.refresh } />
+          <Controls session={ this.props.session } brain={ brain } freeBrain={ this.props.freeBrain } refresh={ this.props.refresh } />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "0rem" }}>

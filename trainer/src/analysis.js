@@ -38,6 +38,31 @@ function compare(samples, predictions) {
   return result;
 }
 
+export function findBestSample(samples, predictions) {
+  let bestError = Infinity;
+  let bestIndex = -1;
+
+  for (let i = 0; i < predictions.length; i++) {
+    let error = 0;
+
+    for (let j = 0; j < predictions[i].length; j++) {
+      error += Math.abs(samples.output[i][j] - predictions[i][j]);
+    }
+
+    if (error < bestError) {
+      bestError = error;
+      bestIndex = i;
+    }
+  }
+
+  return {
+    playbook: samples.source[bestIndex],
+    input: samples.input[bestIndex],
+    output: samples.output[bestIndex],
+    prediction: predictions[bestIndex],
+  };
+}
+
 export function findWorstSample(samples, predictions) {
   let worstError = -Infinity;
   let worstIndex = -1;

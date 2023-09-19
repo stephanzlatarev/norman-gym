@@ -1,6 +1,6 @@
 import Brain from "./Brain.js";
 import Playbook from "./Playbook.js";
-import { findWorstSample } from "./analysis.js";
+import { findBestSample, findWorstSample } from "./analysis.js";
 import { log, readStatus, refreshStatus, sample } from "./mongo.js";
 import resources from "./resources.js";
 import { bestShape } from "./shape.js";
@@ -85,6 +85,7 @@ async function closeEpoch() {
   const control = await evaluate(brain, playbook, evaluation);
 
   await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: control, record: record });
+  await sample(brain.name, "best", findBestSample(batch, prediction));
   await sample(brain.name, "worst", findWorstSample(batch, prediction));
 }
 

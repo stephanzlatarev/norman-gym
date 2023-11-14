@@ -1,4 +1,5 @@
 import React from "react";
+import SampleBattle from "./SampleBattle";
 import SampleBoard from "./SampleBoard";
 import SampleChart from "./SampleChart";
 
@@ -11,6 +12,12 @@ export default class Sample extends React.Component {
     if (this.props.sample.playbook === "forecast") {
       return (
         <SampleChart sample={ this.props.sample } />
+      );
+    }
+
+    if (this.props.sample.playbook.startsWith("loaded-") || this.props.sample.playbook.startsWith("focus-")) {
+      return (
+        <SampleBattle sample={ this.props.sample } />
       );
     }
 

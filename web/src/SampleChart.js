@@ -6,10 +6,12 @@ export default class SampleChart extends React.Component {
     const sample = this.props.sample;
     const objects = [];
 
-    const offsetHeadOpen = 7 + 24;
-    const offsetHeadHigh = 7 + 24 + 24;
-    const offsetHeadLow = 7 + 24 + 24 + 24;
-    const offsetHeadClose = 7 + 24 + 24 + 24 + 24;
+    const chartType = (sample.input.length > 200);
+
+    const offsetHeadOpen = chartType ? 7 + 24 : -1;
+    const offsetHeadHigh = chartType ? 7 + 24 + 24 : 0;
+    const offsetHeadLow = chartType ? 7 + 24 + 24 + 24 : 24;
+    const offsetHeadClose = chartType ? 7 + 24 + 24 + 24 + 24 : -1;
     const offsetTailHigh = 0;
     const offsetTailLow = 24;
 
@@ -31,10 +33,22 @@ export default class SampleChart extends React.Component {
 
     const head = [];
     for (let i = 0; i < 24; i++) {
-      head.push((i * stepX) + " " + (midY + (sample.input[offsetHeadOpen + i] - 1) * stepY));
+      const openCloseY = midY + ((sample.input[offsetHeadHigh + i] + sample.input[offsetHeadLow + i]) / 2 - 1) * stepY;
+
+      if (offsetHeadOpen >= 0) {
+        head.push((i * stepX) + " " + (midY + (sample.input[offsetHeadOpen + i] - 1) * stepY));
+      } else {
+        head.push((i * stepX) + " " + openCloseY);
+      }
+
       head.push((i * stepX) + " " + (midY + (sample.input[offsetHeadHigh + i] - 1) * stepY));
       head.push((i * stepX) + " " + (midY + (sample.input[offsetHeadLow + i] - 1) * stepY));
-      head.push((i * stepX) + " " + (midY + (sample.input[offsetHeadClose + i] - 1) * stepY));
+
+      if (offsetHeadClose >= 0) {
+        head.push((i * stepX) + " " + (midY + (sample.input[offsetHeadClose + i] - 1) * stepY));
+      } else {
+        head.push((i * stepX) + " " + openCloseY);
+      }
     }
     objects.push(<path key="head" d={ "M " + head.join(" L ") } stroke="black" strokeWidth="0.5" fill="none" />);
 

@@ -17,7 +17,7 @@ async function connect(brain) {
 
     db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 } );
 
-    await refreshStatus(brain);
+    await updateStatus(brain, {});
   }
 
   return db;
@@ -29,10 +29,16 @@ export async function readStatus(brain) {
   return await db.collection("brains").findOne({ brain: brain });
 }
 
-export async function refreshStatus(brain) {
+export async function updateStatus(brain, data) {
   const db = await connect(brain);
 
-  await db.collection("brains").updateOne({ brain: brain }, { $set: { brain: brain, time: Date.now() } }, { upsert: true });
+  const status = {
+    ...data,
+    brain: brain,
+    time: Date.now(),
+  };
+
+  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
 }
 
 export async function log(brain, skill, shape, progress) {

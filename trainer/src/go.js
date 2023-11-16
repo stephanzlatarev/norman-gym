@@ -1,7 +1,7 @@
 import Brain from "./Brain.js";
 import Playbook from "./Playbook.js";
 import { findBestSample, findWorstSample } from "./analysis.js";
-import { log, readStatus, refreshStatus, sample } from "./mongo.js";
+import { log, readStatus, updateStatus, sample } from "./mongo.js";
 import resources from "./resources.js";
 import { bestShape } from "./shape.js";
 
@@ -18,29 +18,44 @@ async function go() {
   let status = await readStatus(BRAIN_NAME);
 
   while (true) {
-    if (status && status.skill) {
+    if (hasAssignment(status)) {
       await openEpoch(status);
-      await train();
-    } else {
-      skill = null;
-      await skipEpoch();
-    }
 
-    status = await readStatus(BRAIN_NAME);
-    if (status && status.skill && (skill === status.skill)) {
-      await closeEpoch();
+      await train();
+
+      status = await readStatus(BRAIN_NAME);
+
+      if (hasAssignmentChanged(status)) {
+        await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: NaN });
+      } else {
+        await closeEpoch();
+      }
     } else {
-      await refreshStatus(BRAIN_NAME);
+      await skipEpoch();
     }
   }
 }
 
+function hasAssignment(status) {
+  return (status && status.skill);
+}
+
+function hasAssignmentChanged(status) {
+  if (!status) return true;
+  if (status.skill && (skill !== status.skill)) return true;
+  if (status.shape && (brain.shape !== status.shape)) return true;
+
+  return false;
+}
+
 async function skipEpoch() {
   const secondsToSkip = 60 - new Date().getSeconds();
+
   await new Promise(resolve => setTimeout(resolve, 1000 * secondsToSkip));
 }
 
 async function openEpoch(status) {
+  // Ensure the playbook is loaded
   if (skill !== status.skill) {
     skill = status.skill;
     record = null;
@@ -52,59 +67,58 @@ async function openEpoch(status) {
     await brain.load();
   }
 
-  const shape = await bestShape(playbook.meta, brain);
+  // Create a new batch
+  batch = playbook.batch();
 
+  // Ensure the brain is of the right shape
+  const shape = await bestShape(playbook.meta, brain);
   if (shape && (brain.shape !== shape)) {
     brain.reshape(shape);
+
     await brain.save();
+    await updateStatus(BRAIN_NAME, { shape: brain.shape });
 
     record = null;
   }
 
-  batch = playbook.batch();
-
+  // Ensure an initial progress record
   if (!record) {
-    await setRecord();
+    await logProgress();
   }
 
+  // Set the time of the epoch
   epoch = new Date().getMinutes();
 }
 
 async function train() {
-  while (epoch === new Date().getMinutes()) {
-    await brain.fit(playbook.batch());
-
-    const evaluation = await brain.evaluate(batch);
-
-    if (evaluation.loss < record.overall.loss) {
-      await setRecord(evaluation);
-    }
-  }
+  while ((epoch === new Date().getMinutes()) && (await brain.fit(playbook.batch()) >= record.overall.loss));
 }
 
 async function closeEpoch() {
-  const prediction = await brain.predict(batch);
-  const evaluation = await brain.evaluate(batch);
-  const control = await evaluate(brain, playbook, evaluation);
+  await logProgress();
+}
+
+async function logProgress() {
+  const control = await evaluate(brain, playbook);
+
+  if (!record || (control.overall.loss < record.overall.loss)) {
+    await brain.save();
+
+    record = control;
+  }
 
   await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: control, record: record });
+
+  const prediction = await brain.predict(batch);
+
   await sample(brain.name, "best", findBestSample(batch, prediction));
   await sample(brain.name, "worst", findWorstSample(batch, prediction));
 }
 
-async function setRecord(evaluation) {
-  const status = await readStatus(BRAIN_NAME);
-
-  if (status && status.skill && (skill === status.skill)) {
-    record = await evaluate(brain, playbook, evaluation || await brain.evaluate(batch));
-
-    await brain.save();
-    await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: record, record: record });
-  }
-}
-
-async function evaluate(brain, playbook, overallEvaluation) {
-  const logs = { overall: overallEvaluation };
+async function evaluate(brain, playbook) {
+  const logs = {
+    overall: await brain.evaluate(batch),
+  };
 
   for (const batch of playbook.batches()) {
     if (batch.source.length) {

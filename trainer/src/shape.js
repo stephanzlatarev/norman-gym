@@ -45,10 +45,12 @@ export function infoToShape(info) {
   return layers.join(":");
 }
 
-export async function bestShape(brain) {
+export async function bestShape(playbook, brain) {
   if (brain.locked) return;
+  if (!areCompatibleShapes(brain.shape, playbook.shape)) return playbook.shape;
 
-  const list = await leaderboard(brain.name, brain.skill);
+  const brains = await leaderboard(brain.name, brain.skill);
+  const list = brains.filter(brain => areCompatibleShapes(brain.shape, playbook.shape));
 
   if (list.length > 1) {
     list.sort((a, b) => (a.record - b.record));
@@ -102,6 +104,13 @@ export async function bestShape(brain) {
       "among challengers", JSON.stringify(challengers), "of", JSON.stringify(list),
     );
   }
+}
+
+function areCompatibleShapes(a, b) {
+  const aa = shapeToInfo(a);
+  const bb = shapeToInfo(b);
+
+  return (aa.input === bb.input) && (aa.output === bb.output);
 }
 
 function shouldChangeShape(brains, shapes, name, shape, locked) {

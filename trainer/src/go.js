@@ -52,9 +52,12 @@ async function openEpoch(status) {
     await brain.load();
   }
 
-  const shape = await bestShape(brain);
+  const shape = await bestShape(playbook.meta, brain);
+
   if (shape && (brain.shape !== shape)) {
     brain.reshape(shape);
+    await brain.save();
+
     record = null;
   }
 
@@ -91,6 +94,7 @@ async function closeEpoch() {
 
 async function setRecord(evaluation) {
   const status = await readStatus(BRAIN_NAME);
+
   if (status && status.skill && (skill === status.skill)) {
     record = await evaluate(brain, playbook, evaluation || await brain.evaluate(batch));
 

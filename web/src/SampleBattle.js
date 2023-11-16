@@ -16,7 +16,9 @@ export default class SampleBoard extends React.Component {
 
         // Enemy health
         objects.push(<text key={ key++ } x={ x } y={ y + 10 } fill="red" fillOpacity={ opacity(sample.input[spot]) } style={{ fontSize: 12 }}>♜</text>);
-        objects.push(<text key={ key++ } x={ x } y={ y + 10 } fill="red" fillOpacity={ opacity(sample.input[spot + 441]) } style={{ fontSize: 12 }}>♜</text>);
+
+        // Support health
+        objects.push(<text key={ key++ } x={ x } y={ y + 10 } fill="green" fillOpacity={ opacity(sample.input[spot + 441]) } style={{ fontSize: 12 }}>♜</text>);
 
         // Target
         if (sample.prediction.length >= 441) {
@@ -25,9 +27,11 @@ export default class SampleBoard extends React.Component {
       }
     }
 
-    if (sample.prediction.length === 2) {
-      const x = (sample.prediction[0] + 10) * 10 + 5;
-      const y = (sample.prediction[1] + 10) * 10 + 5;
+    if (sample.output.length === 2) {
+      const ox = (sample.output[0] + 10) * 10 + 5;
+      const oy = (sample.output[1] + 10) * 10 + 5;
+      const px = (sample.prediction[0] + 10) * 10 + 5;
+      const py = (sample.prediction[1] + 10) * 10 + 5;
 
       objects.push(
         <defs key={ key++ }>
@@ -37,7 +41,8 @@ export default class SampleBoard extends React.Component {
           </marker>
         </defs>
       );
-      objects.push(<line key={ key++ } x1="105" y1="105" x2={ x } y2={ y } fill="none" strokeWidth="3" stroke="black" markerEnd="url(#head)" />);
+      objects.push(<line key={ key++ } x1="105" y1="105" x2={ ox } y2={ oy } fill="none" strokeWidth="3" stroke="black" strokeOpacity="0.2" />);
+      objects.push(<line key={ key++ } x1="105" y1="105" x2={ px } y2={ py } fill="none" strokeWidth="3" stroke="black" markerEnd="url(#head)" />);
     }
 
     return (

@@ -15,7 +15,7 @@ export default class Sample extends React.Component {
       );
     }
 
-    if (this.props.sample.playbook.startsWith("loaded-") || this.props.sample.playbook.startsWith("focus-")) {
+    if (this.props.sample.playbook.startsWith("loaded-") || this.props.sample.playbook.startsWith("focus-") || this.props.sample.playbook.startsWith("solo-")) {
       return (
         <SampleBattle sample={ this.props.sample } />
       );

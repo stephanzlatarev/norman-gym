@@ -32,11 +32,11 @@ export default class Brain {
     const info = shapeToInfo(shape);
     const model = tf.sequential();
 
-    model.add(tf.layers.dense({ inputShape: [info.input], units: Number(info.units) }));
+    model.add(tf.layers.dense({ inputShape: [info.input], units: info.units }));
     model.add(tf.layers.leakyReLU());
 
-    for (let i = 1; i < info.layers; i++) {
-      model.add(tf.layers.dense({ units: info.units }));
+    for (const units of info.hidden) {
+      model.add(tf.layers.dense({ units: units }));
       model.add(tf.layers.leakyReLU());
     }
 

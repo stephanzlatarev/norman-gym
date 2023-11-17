@@ -26,7 +26,7 @@ async function go() {
       status = await readStatus(BRAIN_NAME);
 
       if (hasAssignmentChanged(status)) {
-        await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: NaN });
+        await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: 0 });
       } else {
         await closeEpoch();
       }
@@ -71,7 +71,7 @@ async function openEpoch(status) {
   batch = playbook.batch();
 
   // Ensure the brain is of the right shape
-  const shape = await bestShape(playbook.meta, brain);
+  const shape = await bestShape(playbook.meta, brain, status);
   if (shape && (brain.shape !== shape)) {
     brain.reshape(shape);
 

@@ -29,6 +29,7 @@ export function shapeToInfo(shape) {
     layers: units.length - 2,
     units: Number(units[1]),
     multi: Number(units[1]) / Number(units[0]),
+    hidden: (units.length > 3) ? units.slice(2, units.length - 1).map(units => Number(units)) : [],
     output: Number(units[units.length - 1]),
   };
 }
@@ -45,8 +46,8 @@ export function infoToShape(info) {
   return layers.join(":");
 }
 
-export async function bestShape(playbook, brain) {
-  if (brain.locked) return;
+export async function bestShape(playbook, brain, status) {
+  if (status.locked) return status.shape;
   if (!areCompatibleShapes(brain.shape, playbook.shape)) return playbook.shape;
 
   const brains = await leaderboard(brain.name, brain.skill);

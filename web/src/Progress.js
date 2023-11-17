@@ -72,7 +72,7 @@ function color(playbook) {
 }
 
 function logy(value) {
-  return (value >= 0) ? Math.min(Math.abs(Math.log10(value)), 5) : 0;
+  return ((value >= 0) && (value < 1)) ? Math.min(Math.abs(Math.log10(value)), 5) : 0;
 }
 
 function logt(y) {

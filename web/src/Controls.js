@@ -4,6 +4,8 @@ import Card from "@mui/material/Card";
 import CardActions from "@mui/material/CardActions";
 import CardContent from "@mui/material/CardContent";
 import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import IconAdd from '@mui/icons-material/Add';
 import IconDownload from '@mui/icons-material/CloudDownload';
@@ -11,8 +13,17 @@ import IconLocked from '@mui/icons-material/Lock';
 import IconRelease from '@mui/icons-material/Close';
 import IconUnlocked from '@mui/icons-material/LockOpen';
 import Api from "./Api";
+import { shape } from "./shapes.js";
 
 export default class Controls extends React.Component {
+
+  constructor() {
+    super();
+
+    this.state = {
+      editShape: null,
+    };
+  }
 
   async toggleLock() {
     if (this.props.brain) {
@@ -36,6 +47,21 @@ export default class Controls extends React.Component {
     if (this.props.freeBrain) {
       await Api.post({ skill: this.props.session.skill }, "brains", this.props.freeBrain, "update");
       await this.props.refresh();
+    }
+  }
+
+  onEditShape(brain) {
+    this.setState({ editShape: brain });
+  }
+
+  async onChangeShape(shape) {
+    if (shape) {
+      this.shape = shape;
+    } else {
+      await Api.post({ shape: this.shape, locked: true }, "brains", this.props.brain.brain, "update");
+      await this.props.refresh();
+
+      this.setState({ editShape: null });
     }
   }
 
@@ -63,6 +89,20 @@ export default class Controls extends React.Component {
         <CardContent>
           <Typography color="text.secondary">Brain</Typography>
           <Typography>{ this.props.brain.brain }</Typography>
+          {
+            (this.state.editShape === this.props.brain.brain)
+            ? (
+              <TextField id="shape" label="Shape" variant="outlined"
+                defaultValue={ this.props.brain.shape }
+                onChange={(e) => this.onChangeShape(e.target.value)} onBlur={() => this.onChangeShape()}
+              />
+            )
+            : (
+              <Tooltip title={ this.props.brain.shape }>
+                <Typography sx={{ cursor: "pointer" }} onClick={ () => this.onEditShape(this.props.brain.brain) }>{ shape(this.props.brain) }</Typography>
+              </Tooltip>
+            )
+          }
         </CardContent>
         <CardActions>
           <Button size="small" sx={ sxaction } onClick={ this.toggleLock.bind(this) }>

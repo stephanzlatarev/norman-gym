@@ -10,6 +10,7 @@ import TableRow from "@mui/material/TableRow";
 import Tooltip from "@mui/material/Tooltip";
 import IconLocked from '@mui/icons-material/Lock';
 import IconUnlocked from '@mui/icons-material/Moving';
+import { shape } from "./shapes.js";
 
 export default class Controls extends React.Component {
 
@@ -30,7 +31,7 @@ export default class Controls extends React.Component {
         <TableRow key={ brain.brain } sx={ style } onClick={ selectBrain }>
           <TableCell sx={ sxReguralCell }><Avatar sx={{ width: 16, height: 16, bgcolor: state }}>{ icon }</Avatar></TableCell>
           <TableCell sx={ sxReguralCell }>{ brain.brain }</TableCell>
-          <TableCell sx={ sxReguralCell }><Tooltip title={ brain.shape }><span>{ layers(brain.shape) } x { multiplier(brain.shape) }</span></Tooltip></TableCell>
+          <TableCell sx={ sxReguralCell }><Tooltip title={ brain.shape }><span>{ shape(brain) }</span></Tooltip></TableCell>
           <TableCell sx={ sxReguralCell }>{ (brain.pass * 100).toFixed(2) }%</TableCell>
           <TableCell sx={ sxOptionalCell }>{ brain.error.toFixed(4) }</TableCell>
           <TableCell sx={ sxOptionalCell }>{ brain.loss.toExponential(4) }</TableCell>
@@ -60,13 +61,4 @@ export default class Controls extends React.Component {
       </TableContainer>
     );
   }
-}
-
-function layers(shape) {
-  return shape.split(":").length - 1;
-}
-
-function multiplier(shape) {
-  const layers = shape.split(":");
-  return Number(layers[1]) / Number(layers[0]);
 }

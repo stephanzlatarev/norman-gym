@@ -17,10 +17,24 @@ async function connect(brain) {
 
     db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 } );
 
-    await updateStatus(brain, {});
+    if (brain) {
+      await updateStatus(brain, {});
+    }
   }
 
   return db;
+}
+
+export async function readSession(skill) {
+  const db = await connect();
+
+  return await db.collection("sessions").findOne({ skill: skill });
+}
+
+export async function updateSession(skill, data) {
+  const db = await connect();
+
+  await db.collection("sessions").updateOne({ skill: skill }, { $set: data }, { upsert: true });
 }
 
 export async function readStatus(brain) {

@@ -1,5 +1,6 @@
 import fs from "fs";
 import { spawnSync } from "child_process";
+import { readSession, updateSession } from "./mongo.js";
 import { skillToShape } from "./shape.js";
 
 const REPO_FOLDER = "./repo";
@@ -15,6 +16,9 @@ export default class Playbook {
   }
 
   async load() {
+    const session = await getSessionRecord(this.skill);
+    let shouldUpdateSession = false;
+
     fs.rmSync(REPO_FOLDER, { recursive: true, force: true });
     fs.mkdirSync(REPO_FOLDER);
 
@@ -33,6 +37,11 @@ export default class Playbook {
       playbooks: {},
     };
 
+    if (session.shape !== this.meta.shape) {
+      session.shape = this.meta.shape;
+      shouldUpdateSession = true;
+    }
+
     const colors = [...COLORS];
     const scripts = fs.readdirSync(this.folder + "/playbook/").filter(name => name.endsWith(".js"));
 
@@ -45,6 +54,25 @@ export default class Playbook {
         name: name,
         sample: module.default,
       });
+
+      if (!session.playbooks[name]) {
+        session.playbooks[name] = { color: this.meta.playbooks[name].color };
+        shouldUpdateSession = true;
+      } else if (session.playbooks[name].color !== this.meta.playbooks[name].color) {
+        session.playbooks[name].color = this.meta.playbooks[name].color;
+        shouldUpdateSession = true;
+      }
+    }
+
+    for (const name in session.playbooks) {
+      if (!this.meta.playbooks[name]) {
+        delete session.playbooks[name];
+        shouldUpdateSession = true;
+      }
+    }
+
+    if (shouldUpdateSession) {
+      await updateSession(this.skill, session);
     }
   }
 
@@ -56,6 +84,20 @@ export default class Playbook {
     return this.playbooks.map(playbook => batch(playbook));
   }
 
+}
+
+async function getSessionRecord(skill) {
+  let session = await readSession(skill);
+
+  if (!session) {
+    session = {};
+  }
+
+  if (!session.playbooks) {
+    session.playbooks = {};
+  }
+
+  return session;
 }
 
 function batch(...playbooks) {

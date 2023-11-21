@@ -32,10 +32,10 @@ export default class Controls extends React.Component {
           <TableCell sx={ sxReguralCell }><Avatar sx={{ width: 16, height: 16, bgcolor: state }}>{ icon }</Avatar></TableCell>
           <TableCell sx={ sxReguralCell }>{ brain.brain }</TableCell>
           <TableCell sx={ sxReguralCell }><Tooltip title={ brain.shape }><span>{ shape(brain) }</span></Tooltip></TableCell>
-          <TableCell sx={ sxReguralCell }>{ (brain.pass * 100).toFixed(2) }%</TableCell>
-          <TableCell sx={ sxOptionalCell }>{ brain.error.toFixed(4) }</TableCell>
-          <TableCell sx={ sxOptionalCell }>{ brain.loss.toExponential(4) }</TableCell>
-          <TableCell sx={ sxReguralCell }>{ brain.record ? brain.record.toExponential(4) : "-" }</TableCell>
+          <TableCell sx={ sxReguralCell }>{ format(brain.pass, "percent") }</TableCell>
+          <TableCell sx={ sxOptionalCell }>{ format(brain.error, "number") }</TableCell>
+          <TableCell sx={ sxOptionalCell }>{ format(brain.loss, "exponent") }</TableCell>
+          <TableCell sx={ sxReguralCell }>{ format(brain.record, "exponent") }</TableCell>
         </TableRow>
       );
     }
@@ -61,4 +61,14 @@ export default class Controls extends React.Component {
       </TableContainer>
     );
   }
+}
+
+function format(value, type) {
+  if (value === null) return "-";
+
+  if ((type === "percent") && (value >= 0) && (value <= 1)) return (value * 100).toFixed(2) + "%";
+  if ((type === "number") && (value >= 0)) return value.toFixed(4);
+  if ((type === "exponent") && (value >= 0)) return value.toExponential(4);
+
+  return "-";
 }

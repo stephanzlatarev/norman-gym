@@ -49,23 +49,24 @@ export default class App extends React.Component {
     const sessions = await Api.get("sessions");
     state.sessions = sessions ? sessions : [];
 
+    for (const session of state.sessions) {
+      session.brains = state.brains.filter(one => (one.skill === session.skill));
+      session.playbooks["overall"] = { color: "black" };
+    }
+    state.sessions.sort((a, b) => (b.brains.length - a.brains.length));
+
     this.setState(state);
   }
 
   render() {
     const alert = this.state.free ? (<Alert severity="info">{ this.state.free } free { (this.state.free === 1) ? "brain" : "brains" }.</Alert>) : null;
 
-    const sessions = [];
-    for (const session of this.state.sessions) {
-      const brains = this.state.brains.filter(one => (one.skill === session.skill));
-      session.playbooks["overall"] = { color: "black" };
-      sessions.push(
-        <Session key={ session.skill } tick={ this.state.tick }
-          session={ session } brains={ brains } freeBrain={ this.state.freeBrain }
-          refresh={ this.refresh.bind(this) }
-        />
-      );
-    }
+    const sessions = this.state.sessions.map(session => (
+      <Session key={ session.skill } tick={ this.state.tick }
+        session={ session } brains={ session.brains } freeBrain={ this.state.freeBrain }
+        refresh={ this.refresh.bind(this) }
+      />
+    ));
 
     return (
       <div className="App">

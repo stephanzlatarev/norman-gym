@@ -27,14 +27,15 @@ export default class Session extends React.Component {
 
   async componentDidUpdate(props, prevstate) {
     const state = {};
+    const ready = (this.props.session && this.props.session.brains);
 
     if (
       (this.props.tick !== props.tick) ||
-      (this.props.brains.length && (!this.state.selection || (this.state.selection !== prevstate.selection)))
+      (ready && (!this.state.selection || (this.state.selection !== prevstate.selection)))
     ) {
-      if (this.props.brains.length) {
-        if (!this.state.selection || !this.props.brains.find(one => (one.brain === this.state.selection))) {
-          state.selection = this.props.brains[0].brain;
+      if (this.props.session.brains && this.props.session.brains.length) {
+        if (!this.state.selection || !this.props.session.brains.find(one => (one.brain === this.state.selection))) {
+          state.selection = this.props.session.brains[0].brain;
         }
 
         const progress = await Api.get("brains", this.state.selection || state.selection, "progress");
@@ -66,13 +67,13 @@ export default class Session extends React.Component {
   }
 
   render() {
-    if (!this.props.brains.length) {
+    if (!this.props.session.brains.length) {
       return (
         <Controls session={ this.props.session } freeBrain={ this.props.freeBrain } refresh={ this.props.refresh } />
       );
     }
 
-    this.props.brains.sort((a, b) => (a.record - b.record));
+    this.props.session.brains.sort((a, b) => (a.record - b.record));
 
     const samplesTabs = [];
     const samplesViews = [];
@@ -87,7 +88,7 @@ export default class Session extends React.Component {
     }
 
     const playbooks = this.props.session.playbooks;
-    const brain = this.props.brains.find(one => (one.brain === this.state.selection));
+    const brain = this.props.session.brains.find(one => (one.brain === this.state.selection));
 
     return (
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} useFlexGap flexWrap="wrap">
@@ -97,7 +98,7 @@ export default class Session extends React.Component {
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "0rem" }}>
-          <Leaderboard brains={ this.props.brains } selected={ this.state.selection } onSelect={ this.selectBrain.bind(this) } />
+          <Leaderboard brains={ this.props.session.brains } selected={ this.state.selection } onSelect={ this.selectBrain.bind(this) } />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>

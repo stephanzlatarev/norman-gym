@@ -39,6 +39,7 @@ export async function unlockBrain(request, response) {
 export async function updateBrain(request, response) {
   const properties = {};
 
+  if (request.body.fixture !== undefined) properties["fixture"] = request.body.fixture;
   if (request.body.locked !== undefined) properties["locked"] = request.body.locked;
   if (request.body.shape !== undefined) properties["shape"] = request.body.shape;
   if (request.body.skill !== undefined) properties["skill"] = request.body.skill;

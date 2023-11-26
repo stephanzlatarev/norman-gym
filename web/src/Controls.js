@@ -21,6 +21,7 @@ export default class Controls extends React.Component {
     super();
 
     this.state = {
+      editFixture: null,
       editShape: null,
     };
   }
@@ -50,8 +51,23 @@ export default class Controls extends React.Component {
     }
   }
 
+  onEditFixture(brain) {
+    this.setState({ editFixture: brain });
+  }
+
   onEditShape(brain) {
     this.setState({ editShape: brain });
+  }
+
+  async onChangeFixture(fixture) {
+    if (fixture) {
+      this.fixture = fixture;
+    } else {
+      await Api.post({ fixture: this.fixture }, "brains", this.props.brain.brain, "update");
+      await this.props.refresh();
+
+      this.setState({ editFixture: null });
+    }
   }
 
   async onChangeShape(shape) {
@@ -83,6 +99,7 @@ export default class Controls extends React.Component {
     }
 
     const sxaction = { minWidth: "16px" };
+    const fixture = (this.props.brain && this.props.brain.fixture) ? this.props.brain.fixture : "no fixture";
 
     const cardBrain = this.props.brain ? (
       <Card>
@@ -100,6 +117,20 @@ export default class Controls extends React.Component {
             : (
               <Tooltip title={ this.props.brain.shape }>
                 <Typography sx={{ cursor: "pointer" }} onClick={ () => this.onEditShape(this.props.brain.brain) }>{ shape(this.props.brain) }</Typography>
+              </Tooltip>
+            )
+          }
+          {
+            (this.state.editFixture === this.props.brain.brain)
+            ? (
+              <TextField id="fixture" label="Fixture" variant="outlined"
+                defaultValue={ this.props.brain.fixture ? this.props.brain.fixture : "50% 0.0001" }
+                onChange={(e) => this.onChangeFixture(e.target.value)} onBlur={() => this.onChangeFixture()}
+              />
+            )
+            : (
+              <Tooltip>
+                <Typography sx={{ cursor: "pointer" }} onClick={ () => this.onEditFixture(this.props.brain.brain) }>{ fixture }</Typography>
               </Tooltip>
             )
           }

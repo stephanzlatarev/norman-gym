@@ -11,8 +11,10 @@ let skill;
 let playbook;
 let brain;
 let batch;
+let fixture;
 let epoch;
 let record;
+let control;
 
 async function go() {
   let status = await readStatus(BRAIN_NAME);
@@ -67,8 +69,14 @@ async function openEpoch(status) {
     await brain.load();
   }
 
+  // Create fixture batch if configured
+  if (shouldCreateFixtureBatch(status.fixture)) {
+    fixture = createFixtureBatch(playbook.batch(), status.fixture);
+    console.log("new fixture:", status.fixture, "-> batch length:", fixture.length);
+  }
+
   // Create a new batch
-  batch = playbook.batch();
+  batch = fixBatch(playbook.batch(), fixture);
 
   // Ensure the brain is of the right shape
   const shape = await bestShape(playbook.meta, brain, status);
@@ -99,7 +107,7 @@ async function closeEpoch() {
 }
 
 async function logProgress() {
-  const control = await evaluate(brain, playbook);
+  control = await evaluate(brain, playbook);
 
   if (!record || (control.overall.loss < record.overall.loss)) {
     await brain.save();
@@ -120,6 +128,11 @@ async function evaluate(brain, playbook) {
     overall: await brain.evaluate(batch),
   };
 
+  if (fixture) {
+    logs["fixture"] = await brain.evaluate(fixture);
+    console.log("loss overall:", logs.overall.loss, "fixture:", logs["fixture"].loss);
+  }
+
   for (const batch of playbook.batches()) {
     if (batch.source.length) {
       logs[batch.source[0]] = await brain.evaluate(batch);
@@ -127,6 +140,38 @@ async function evaluate(brain, playbook) {
   }
 
   return logs;
+}
+
+function shouldCreateFixtureBatch(config) {
+  if (!config) return false;
+  if (!fixture) return true;
+  if (!control) return false;
+  if (!control.fixture) return false;
+
+  return (control.fixture.loss < Number(config.split(" ")[1]));
+}
+
+function createFixtureBatch(batch, fixture) {
+  const config = fixture.split(" ");
+  const ratio = Number(config[0].split("%")[0]) / 100;
+  const length = Math.floor(batch.length * ratio);
+
+  batch.length = length;
+  batch.input.length = length;
+  batch.output.length = length;
+
+  return batch;
+}
+
+function fixBatch(batch, fixture) {
+  if (fixture) {
+    for (let i = 0; i < fixture.length; i++) {
+      batch.input[i] = fixture.input[i];
+      batch.output[i] = fixture.output[i];
+    }
+  }
+
+  return batch;
 }
 
 go();

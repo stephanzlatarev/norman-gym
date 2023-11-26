@@ -52,6 +52,7 @@ export default class App extends React.Component {
     for (const session of state.sessions) {
       session.brains = state.brains.filter(one => (one.skill === session.skill));
       session.playbooks["overall"] = { color: "black" };
+      session.playbooks["fixture"] = { color: "gray", dash: true };
     }
     state.sessions.sort((a, b) => (b.brains.length - a.brains.length));
 

@@ -7,7 +7,7 @@ import SampleList from "./SampleList";
 export default class Sample extends React.Component {
 
   renderSample() {
-    if ((this.props.sample.input.length === 156) && (this.props.sample.output.length === 2)) {
+    if (((this.props.sample.input.length === 156) || (this.props.sample.input.length === 24)) && (this.props.sample.output.length === 2)) {
       return (
         <SampleList sample={ this.props.sample } />
       );

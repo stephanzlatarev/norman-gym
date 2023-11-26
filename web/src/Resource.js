@@ -11,11 +11,16 @@ export default class Resource extends React.Component {
 
     const xstep = WIDTH / (this.props.progress.length - 1);
 
-    const line = [];
+    const primary = [];
+    const secondary = [];
     let x = 0;
     for (const point of this.props.progress) {
       if (point.resources) {
-        line.push(x + "," + y(point.resources[this.props.indicator]));
+        primary.push(x + "," + y(point.resources[this.props.indicator]));
+
+        if (this.props.secondary && point.resources[this.props.secondary]) {
+          secondary.push(x + "," + y(point.resources[this.props.secondary]));
+        }
       }
       x += xstep;
     }
@@ -34,7 +39,11 @@ export default class Resource extends React.Component {
         </g>
 
         <g style={{ fill: "none", stroke: "black", strokeWidth: 0.1 }}>
-          <polyline points={ line.join(" ")} />
+          <polyline points={ primary.join(" ")} />
+        </g>
+
+        <g style={{ fill: "none", stroke: "black", strokeWidth: 0.05, strokeDasharray: WIDTH / 200 }}>
+          <polyline points={ secondary.join(" ")} />
         </g>
       </svg>
     );

@@ -114,7 +114,7 @@ export default class Session extends React.Component {
           <Progress visible={ this.state.progressTab === 0 } playbooks={ playbooks } progress={ this.state.progress } indicator="pass" type="per" />
           <Progress visible={ this.state.progressTab === 1 } playbooks={ playbooks } progress={ this.state.progress } indicator="error" type="log" />
           <Progress visible={ this.state.progressTab === 2 } playbooks={ playbooks } progress={ this.state.progress } indicator="loss" type="log" />
-          <Resource visible={ this.state.progressTab === 3 } progress={ this.state.progress } indicator="cpu" />
+          <Resource visible={ this.state.progressTab === 3 } progress={ this.state.progress } indicator="cpu" secondary="efficiency" />
           <Resource visible={ this.state.progressTab === 4 } progress={ this.state.progress } indicator="ram" />
         </Paper>
 

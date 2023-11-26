@@ -6,15 +6,16 @@ import resources from "./resources.js";
 import { bestShape } from "./shape.js";
 
 const BRAIN_NAME = process.env.HOSTNAME || "brain";
+const EPOCH_SIZE = 60000;
 
 let skill;
 let playbook;
 let brain;
 let batch;
 let fixture;
-let epoch;
 let record;
 let control;
+let time;
 
 async function go() {
   let status = await readStatus(BRAIN_NAME);
@@ -23,17 +24,20 @@ async function go() {
     if (hasAssignment(status)) {
       await openEpoch(status);
 
-      await train();
+      const resourceEfficiency = await train();
 
+      time = Date.now();
       status = await readStatus(BRAIN_NAME);
 
       if (hasAssignmentChanged(status)) {
         await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: 0 });
+        time = 0;
       } else {
-        await closeEpoch();
+        await closeEpoch(resourceEfficiency);
       }
     } else {
       await skipEpoch();
+      time = 0;
     }
   }
 }
@@ -51,9 +55,7 @@ function hasAssignmentChanged(status) {
 }
 
 async function skipEpoch() {
-  const secondsToSkip = 60 - new Date().getSeconds();
-
-  await new Promise(resolve => setTimeout(resolve, 1000 * secondsToSkip));
+  await new Promise(resolve => setTimeout(resolve, EPOCH_SIZE));
 }
 
 async function openEpoch(status) {
@@ -72,7 +74,6 @@ async function openEpoch(status) {
   // Create fixture batch if configured
   if (shouldCreateFixtureBatch(status.fixture)) {
     fixture = createFixtureBatch(playbook.batch(), status.fixture);
-    console.log("new fixture:", status.fixture, "-> batch length:", fixture.length);
   }
 
   // Create a new batch
@@ -91,22 +92,27 @@ async function openEpoch(status) {
 
   // Ensure an initial progress record
   if (!record) {
-    await logProgress();
+    await logProgress(0);
   }
-
-  // Set the time of the epoch
-  epoch = new Date().getMinutes();
 }
 
 async function train() {
-  while ((epoch === new Date().getMinutes()) && (await brain.fit(playbook.batch()) >= record.overall.loss));
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < EPOCH_SIZE) {
+    await brain.fit(batch);
+  }
+
+  const endTime = Date.now();
+
+  return time ? (endTime - startTime) / (endTime - time) : 0;
 }
 
-async function closeEpoch() {
-  await logProgress();
+async function closeEpoch(resourceEfficiency) {
+  await logProgress(resourceEfficiency);
 }
 
-async function logProgress() {
+async function logProgress(resourceEfficiency) {
   control = await evaluate(brain, playbook);
 
   if (!record || (control.overall.loss < record.overall.loss)) {
@@ -115,7 +121,7 @@ async function logProgress() {
     record = control;
   }
 
-  await log(brain.name, brain.skill, brain.shape, { resources: resources(), control: control, record: record });
+  await log(brain.name, brain.skill, brain.shape, { resources: { ...resources(), efficiency: resourceEfficiency }, control: control, record: record });
 
   const prediction = await brain.predict(batch);
 
@@ -125,12 +131,11 @@ async function logProgress() {
 
 async function evaluate(brain, playbook) {
   const logs = {
-    overall: await brain.evaluate(batch),
+    overall: await brain.evaluate(playbook.batch()),
   };
 
   if (fixture) {
     logs["fixture"] = await brain.evaluate(fixture);
-    console.log("loss overall:", logs.overall.loss, "fixture:", logs["fixture"].loss);
   }
 
   for (const batch of playbook.batches()) {

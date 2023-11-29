@@ -47,13 +47,13 @@ export default class Brain {
     this.shape = compile(model);
   }
 
-  async fit(batch) {
+  async fit(batch, epochs) {
     tf.engine().startScope();
 
     const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
     const output = tf.tensor(batch.output, [batch.length, batch.outputSize]);
 
-    const result = await this.model.fit(input, output, { epochs: 1, batchSize: batch.length, shuffle: true, verbose: 0 });
+    const result = await this.model.fit(input, output, { epochs: epochs, batchSize: batch.length, shuffle: true, verbose: 0 });
 
     tf.engine().endScope();
 

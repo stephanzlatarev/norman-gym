@@ -7,6 +7,7 @@ import { bestShape } from "./shape.js";
 
 const BRAIN_NAME = process.env.HOSTNAME || "brain";
 const EPOCH_SIZE = 60000;
+const BATCH_SIZE = 10000;
 
 let skill;
 let playbook;
@@ -16,6 +17,7 @@ let fixture;
 let record;
 let control;
 let time;
+let epochs;
 
 async function go() {
   let status = await readStatus(BRAIN_NAME);
@@ -32,12 +34,14 @@ async function go() {
       if (hasAssignmentChanged(status)) {
         await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: 0 });
         time = 0;
+        epochs = 0;
       } else {
         await closeEpoch(resourceEfficiency);
       }
     } else {
       await skipEpoch();
       time = 0;
+      epochs = 0;
     }
   }
 }
@@ -73,11 +77,11 @@ async function openEpoch(status) {
 
   // Create fixture batch if configured
   if (shouldCreateFixtureBatch(status.fixture)) {
-    fixture = createFixtureBatch(playbook.batch(), status.fixture);
+    fixture = createFixtureBatch(status.fixture);
   }
 
-  // Create a new batch
-  batch = fixBatch(playbook.batch(), fixture);
+  // Create a new training batch
+  batch = createTrainingBatch(fixture);
 
   // Ensure the brain is of the right shape
   const shape = await bestShape(playbook.meta, brain, status);
@@ -98,12 +102,22 @@ async function openEpoch(status) {
 
 async function train() {
   const startTime = Date.now();
+  let endTime = startTime;
 
-  while (Date.now() - startTime < EPOCH_SIZE) {
-    await brain.fit(batch);
+  if (!epochs) epochs = 1;
+
+  while (endTime - startTime < EPOCH_SIZE) {
+    const fitStart = endTime;
+
+    await brain.fit(batch, epochs);
+
+    endTime = Date.now();
+
+    const fitTime = endTime - fitStart;
+
+    if (fitTime < (EPOCH_SIZE / 2)) epochs = epochs * 2;
+    if (fitTime > EPOCH_SIZE) epochs = Math.ceil(epochs / 2);
   }
-
-  const endTime = Date.now();
 
   return time ? (endTime - startTime) / (endTime - time) : 0;
 }
@@ -131,14 +145,15 @@ async function logProgress(resourceEfficiency) {
 
 async function evaluate(brain, playbook) {
   const logs = {
-    overall: await brain.evaluate(playbook.batch()),
+    overall: await brain.evaluate(playbook.batch(BATCH_SIZE)),
   };
 
   if (fixture) {
     logs["fixture"] = await brain.evaluate(fixture);
   }
 
-  for (const batch of playbook.batches()) {
+  const batchSize = Math.ceil(BATCH_SIZE / playbook.playbooks.length);
+  for (const batch of playbook.batches(batchSize)) {
     if (batch.source.length) {
       logs[batch.source[0]] = await brain.evaluate(batch);
     }
@@ -156,27 +171,32 @@ function shouldCreateFixtureBatch(config) {
   return (control.fixture.loss < Number(config.split(" ")[1]));
 }
 
-function createFixtureBatch(batch, fixture) {
-  const config = fixture.split(" ");
-  const ratio = Number(config[0].split("%")[0]) / 100;
-  const length = Math.floor(batch.length * ratio);
+function createFixtureBatch(config) {
+  const ratio = Number(config.split(" ")[0].split("%")[0]) / 100;
+  const batchSize = Math.floor(BATCH_SIZE * ratio);
 
-  batch.length = length;
-  batch.input.length = length;
-  batch.output.length = length;
-
-  return batch;
+  return playbook.batch(batchSize);
 }
 
-function fixBatch(batch, fixture) {
+function createTrainingBatch(fixture) {
   if (fixture) {
-    for (let i = 0; i < fixture.length; i++) {
-      batch.input[i] = fixture.input[i];
-      batch.output[i] = fixture.output[i];
-    }
-  }
+    if (fixture.length >= BATCH_SIZE) {
+      return fixture;
+    } else {
+      const batch = playbook.batch(BATCH_SIZE - fixture.length);
 
-  return batch;
+      return {
+        length: BATCH_SIZE,
+        source: [...fixture.source, ...batch.source],
+        input: [...fixture.input, ...batch.input],
+        inputSize: fixture.inputSize,
+        output: [...fixture.output, ...batch.output],
+        outputSize: fixture.outputSize,
+      };
+    }
+  } else {
+    return playbook.batch(BATCH_SIZE);
+  }
 }
 
 go();

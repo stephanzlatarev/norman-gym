@@ -4,7 +4,6 @@ import { readSession, updateSession } from "./mongo.js";
 import { skillToShape } from "./shape.js";
 
 const REPO_FOLDER = "./repo";
-const BATCH_SIZE = 10000;
 const COLORS = ["green", "blue", "orange", "red", "pink", "brown"];
 
 export default class Playbook {
@@ -76,12 +75,12 @@ export default class Playbook {
     }
   }
 
-  batch() {
-    return batch(...this.playbooks);
+  batch(size) {
+    return batch(size, ...this.playbooks);
   }
 
-  batches() {
-    return this.playbooks.map(playbook => batch(playbook));
+  batches(size) {
+    return this.playbooks.map(playbook => batch(size, playbook));
   }
 
 }
@@ -100,8 +99,8 @@ async function getSessionRecord(skill) {
   return session;
 }
 
-function batch(...playbooks) {
-  const countPerPlaybook = Math.ceil(BATCH_SIZE / playbooks.length);
+function batch(size, ...playbooks) {
+  const countPerPlaybook = Math.ceil(size / playbooks.length);
 
   const source = [];
   const input = [];
@@ -116,12 +115,12 @@ function batch(...playbooks) {
     }
   }
 
-  source.length = BATCH_SIZE;
-  input.length = BATCH_SIZE;
-  output.length = BATCH_SIZE;
+  source.length = size;
+  input.length = size;
+  output.length = size;
 
   return {
-    length: BATCH_SIZE,
+    length: size,
     source: source,
     input: input,
     inputSize: input.length ? input[0].length : 0,

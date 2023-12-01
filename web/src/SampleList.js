@@ -6,12 +6,13 @@ export default class SampleBoard extends React.Component {
   render() {
     const sample = this.props.sample;
 
-    const OFFSET_WARRIORS = (sample.input.length === 156) ? 6 : 3;
-    const SIZE_WARRIORS = (sample.input.length === 156) ? 8 : 3;
-    const SLOTS_WARRIORS = 3;
-    const OFFSET_ENEMIES = (sample.input.length === 156) ? 6 + 80 : 12;
-    const SIZE_ENEMIES = (sample.input.length === 156) ? 7 : 3;
-    const SLOTS_ENEMIES = 4;
+    const long = (sample.input.length === 156);
+    const OFFSET_WARRIORS = long ? 6 : 3;
+    const SIZE_WARRIORS = long ? 8 : 3;
+    const SLOTS_WARRIORS = long ? 10 : 3;
+    const OFFSET_ENEMIES = long ? 6 + 80 : 12;
+    const SIZE_ENEMIES = long ? 7 : 3;
+    const SLOTS_ENEMIES = long ? 10 : 4;
 
     const objects = [];
     let key = 0;
@@ -24,22 +25,26 @@ export default class SampleBoard extends React.Component {
 
     // Warriors
     for (let i = 0; i < SLOTS_WARRIORS; i++) {
-      if (!sample.input[OFFSET_WARRIORS + i * SIZE_WARRIORS]) continue;
+      const offset = OFFSET_WARRIORS + i * SIZE_WARRIORS;
 
-      const x = coordinate(sample.input[OFFSET_WARRIORS + i * SIZE_WARRIORS]);
-      const y = coordinate(sample.input[OFFSET_WARRIORS + i * SIZE_WARRIORS + 1]);
-      const h = sample.input[OFFSET_WARRIORS + i * SIZE_WARRIORS + 2];
+      if (!sample.input[offset]) continue;
+
+      const x = coordinate(sample.input[offset]);
+      const y = coordinate(sample.input[offset + 1]);
+      const h = sample.input[offset + 2];
 
       objects.push(<text key={ key++ } x={ x } y={ y + 10 } fill="green" fillOpacity={ opacity(h) } style={{ fontSize: 12 }}>♜</text>);
     }
 
     // Enemies
     for (let i = 0; i < SLOTS_ENEMIES; i++) {
-      if (!sample.input[OFFSET_ENEMIES + i * SIZE_ENEMIES]) continue;
+      const offset = OFFSET_ENEMIES + i * SIZE_ENEMIES;
 
-      const x = coordinate(sample.input[OFFSET_ENEMIES + i * SIZE_ENEMIES]);
-      const y = coordinate(sample.input[OFFSET_ENEMIES + i * SIZE_ENEMIES + 1]);
-      const h = sample.input[OFFSET_ENEMIES + i * SIZE_ENEMIES + 2];
+      if (!sample.input[offset]) continue;
+
+      const x = coordinate(sample.input[offset]);
+      const y = coordinate(sample.input[offset + 1]);
+      const h = sample.input[offset + 2];
 
       objects.push(<text key={ key++ } x={ x } y={ y + 10 } fill="red" fillOpacity={ opacity(h) } style={{ fontSize: 12 }}>♜</text>);
     }

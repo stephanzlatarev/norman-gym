@@ -60,13 +60,13 @@ export default class Controls extends React.Component {
   }
 
   async onChangeFixture(fixture) {
-    if (fixture) {
-      this.fixture = fixture;
-    } else {
+    if (fixture === true) {
       await Api.post({ fixture: this.fixture }, "brains", this.props.brain.brain, "update");
       await this.props.refresh();
 
       this.setState({ editFixture: null });
+    } else {
+      this.fixture = fixture ? fixture : "";
     }
   }
 
@@ -125,7 +125,7 @@ export default class Controls extends React.Component {
             ? (
               <TextField id="fixture" label="Fixture" variant="outlined"
                 defaultValue={ this.props.brain.fixture ? this.props.brain.fixture : "50% 0.0001" }
-                onChange={(e) => this.onChangeFixture(e.target.value)} onBlur={() => this.onChangeFixture()}
+                onChange={(e) => this.onChangeFixture(e.target.value)} onBlur={() => this.onChangeFixture(true)}
               />
             )
             : (

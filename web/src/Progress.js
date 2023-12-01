@@ -9,8 +9,16 @@ export default class Progress extends React.Component {
     if (!this.props.visible) return null;
     if (!this.props.playbooks || !this.props.progress || !this.props.indicator) return null;
 
-    const y = (this.props.type === "log") ? logy : pery;
-    const tick = (this.props.type === "log") ? logt : pert;
+    let y = pery;
+    let tick = pert;
+
+    if (this.props.type === "log") {
+      const e = exponent(this.props.progress, this.props.playbooks, this.props.indicator);
+
+      y = (y) => logy(y, e);
+      tick = (y) => logt(e - y);
+    }
+
     const xstep = WIDTH / (this.props.progress.length - 1);
     let key = 1;
 
@@ -71,12 +79,50 @@ function color(playbook) {
   return (playbook && playbook.color) ? playbook.color : "black";
 }
 
-function logy(value) {
-  return ((value >= 0) && (value < 1)) ? Math.min(Math.abs(Math.log10(value)), 5) : 0;
+function exponent(progress, playbooks, indicator) {
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const point of progress) {
+    for (const playbook in playbooks) {
+      if (point.control[playbook]) {
+        min = Math.min(min, point.control[playbook][indicator]);
+        max = Math.max(max, point.control[playbook][indicator]);
+      }
+
+      if (point.record[playbook]) {
+        min = Math.min(min, point.record[playbook][indicator]);
+        max = Math.max(max, point.record[playbook][indicator]);
+      }
+    }
+  }
+
+  min = Math.ceil(Math.log10(min) + 3);
+  max = Math.floor(Math.log10(max));
+
+  return Math.min(min, max);
 }
 
-function logt(y) {
-  return (y >= 0) ? "0." + ("00000".substring(5 - y)) + "X" : "-";
+function logy(value, e) {
+  const y = e - Math.log10(value) + 1;
+
+  if (y < 0) return 0;
+  if (y > 5) return 5;
+  return y;
+}
+
+function logt(e) {
+  if (e < 0) {
+    let tick = "0.";
+    for (let z = 0; z < -1-e; z++) tick += "0";
+    return tick + "X";
+  } else if (e >= 0) {
+    let tick = "X";
+    for (let z = 0; z < e; z++) tick += "0";
+    return tick;
+  }
+
+  return "-";
 }
 
 function pery(value) {

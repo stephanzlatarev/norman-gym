@@ -14,6 +14,7 @@ let playbook;
 let brain;
 let batch;
 let fixture;
+let threshold;
 let record;
 let control;
 let time;
@@ -33,17 +34,22 @@ async function go() {
 
       if (hasAssignmentChanged(status)) {
         await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: 0 });
-        time = 0;
-        epochs = 0;
+        clearAssignmentMetrics();
       } else {
         await closeEpoch(resourceEfficiency);
       }
     } else {
       await skipEpoch();
-      time = 0;
-      epochs = 0;
+      clearAssignmentMetrics();
     }
   }
+}
+
+function clearAssignmentMetrics() {
+  time = 0;
+  epochs = 0;
+  fixture = null;
+  threshold = Infinity;
 }
 
 function hasAssignment(status) {
@@ -168,14 +174,33 @@ function shouldCreateFixtureBatch(config) {
   if (!control) return false;
   if (!control.fixture) return false;
 
-  return (control.fixture.loss < Number(config.split(" ")[1]));
+  if (control.fixture.loss > threshold) {
+    threshold = Infinity;
+    return true;
+  } else {
+    threshold = control.fixture.loss;
+    return false;
+  }
 }
 
 function createFixtureBatch(config) {
   const ratio = Number(config.split(" ")[0].split("%")[0]) / 100;
   const batchSize = Math.floor(BATCH_SIZE * ratio);
 
-  return playbook.batch(batchSize);
+  let playbookName;
+  let playbookLoss = -Infinity;
+  if (control) {
+    for (const name in control) {
+      if ((name === "overall") || (name === "fixture")) continue;
+
+      if (control[name].loss > playbookLoss) {
+        playbookName = name;
+        playbookLoss = control[name].loss;
+      }
+    }
+  }
+
+  return playbook.batch(batchSize, playbookName);
 }
 
 function createTrainingBatch(fixture) {

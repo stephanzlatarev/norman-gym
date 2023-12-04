@@ -75,8 +75,18 @@ export default class Playbook {
     }
   }
 
-  batch(size) {
-    return batch(size, ...this.playbooks);
+  batch(size, ...playbookNames) {
+    let playbooks = this.playbooks;
+
+    if (playbookNames && playbookNames.length) {
+      playbooks = this.playbooks.filter(playbook => (playbookNames.indexOf(playbook.name) >= 0));
+    }
+
+    if (!playbooks.length) {
+      playbooks = this.playbooks;
+    }
+
+    return batch(size, ...playbooks);
   }
 
   batches(size) {

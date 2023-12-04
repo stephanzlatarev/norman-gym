@@ -9,10 +9,11 @@ const STORE_FOLDER = process.cwd();
 
 export default class Brain {
 
-  constructor(name, skill, shape) {
+  constructor(name, skill, shape, fidelity) {
     this.name = name;
     this.skill = skill;
     this.shape = shape;
+    this.fidelity = fidelity ? fidelity : 0.01;
   }
 
   async load() {
@@ -70,7 +71,7 @@ export default class Brain {
     const evaluation = {
       loss: await get(loss, actual, expected),
       error: await get(error, actual, expected),
-      pass: await get(pass, actual, expected),
+      pass: await get((actual, expected) => pass(actual, expected, this.fidelity), actual, expected),
     };
 
     tf.engine().endScope();
@@ -122,6 +123,6 @@ function error(actual, expected) {
   return actual.sub(expected).abs().max(1).mean();
 }
 
-function pass(actual, expected) {
-  return tf.scalar(1).sub(actual.sub(expected).abs().max(1).sub(0.01).step().mean());
+function pass(actual, expected, fidelity) {
+  return tf.scalar(1).sub(actual.sub(expected).abs().max(1).sub(fidelity).step().mean());
 }

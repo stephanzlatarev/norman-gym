@@ -134,6 +134,7 @@ export default class Controls extends React.Component {
               </Tooltip>
             )
           }
+          Fidelity: { this.props.session.fidelity }
         </CardContent>
         <CardActions>
           <Button size="small" sx={ sxaction } onClick={ this.toggleLock.bind(this) }>

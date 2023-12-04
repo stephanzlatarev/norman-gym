@@ -33,11 +33,17 @@ export default class Playbook {
     this.meta = {
       skill: this.skill,
       shape: skillToShape(mapping),
+      fidelity: mapping.fidelity,
       playbooks: {},
     };
 
     if (session.shape !== this.meta.shape) {
       session.shape = this.meta.shape;
+      shouldUpdateSession = true;
+    }
+
+    if (session.fidelity !== this.meta.fidelity) {
+      session.fidelity = this.meta.fidelity;
       shouldUpdateSession = true;
     }
 

@@ -1,6 +1,6 @@
 import Brain from "./Brain.js";
 import Playbook from "./Playbook.js";
-import { findBestSample, findWorstSample } from "./analysis.js";
+import { findBestSample, findRandomSample, findWorstSample } from "./analysis.js";
 import { log, readStatus, updateStatus, sample } from "./mongo.js";
 import resources from "./resources.js";
 import { bestShape } from "./shape.js";
@@ -77,7 +77,7 @@ async function openEpoch(status) {
     playbook = new Playbook(skill);
     await playbook.load();
 
-    brain = new Brain(BRAIN_NAME, playbook.meta.skill, playbook.meta.shape);
+    brain = new Brain(BRAIN_NAME, playbook.meta.skill, playbook.meta.shape, playbook.meta.fidelity);
     await brain.load();
   }
 
@@ -146,6 +146,7 @@ async function logProgress(resourceEfficiency) {
   const prediction = await brain.predict(batch);
 
   await sample(brain.name, "best", findBestSample(batch, prediction));
+  await sample(brain.name, "random", findRandomSample(batch, prediction));
   await sample(brain.name, "worst", findWorstSample(batch, prediction));
 }
 

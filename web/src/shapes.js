@@ -1,5 +1,7 @@
 
 export function shape(brain) {
+  if (!brain || !brain.shape) return "-";
+
   const units = multiplier(brain.shape);
   const size = (units !== Math.floor(units)) ? Math.floor(units + 1) + "*" : units;
 

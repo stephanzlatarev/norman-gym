@@ -46,3 +46,17 @@ export async function update(collection, filter, data) {
 
   await db.collection(collection).updateOne(filter, { $set: data }, { upsert: true });
 }
+
+export async function remove(brain) {
+  const db = await connect();
+  const bucket = new GridFSBucket(db);
+  const cursor = bucket.find({ metadata: { brain: brain } });
+
+  for await (const file of cursor) {
+    await bucket.delete(file._id);
+  }
+
+  await db.collection("brains").deleteMany({ brain: brain });
+  await db.collection("progress").deleteMany({ brain: brain });
+  await db.collection("samples").deleteMany({ brain: brain });
+}

@@ -1,5 +1,5 @@
 import { sendError, sendResponse } from "./http.js";
-import { list, load, update } from "./mongo.js";
+import { list, load, update, remove } from "./mongo.js";
 
 export async function downloadBrain(request, response) {
   const file = await load(request.params.brain);
@@ -25,15 +25,19 @@ export async function readProgress(request, response) {
 }
 
 export async function releaseBrain(request, response) {
-  return updateBrainWithProperties(request, response, { skill: null });
+  if (request.params.brain && request.params.brain.length) {
+    await remove(request.params.brain);
+  }
+
+  return await updateBrainWithProperties(request, response, { skill: null });
 }
 
 export async function lockBrain(request, response) {
-  return updateBrainWithProperties(request, response, { locked: true });
+  return await updateBrainWithProperties(request, response, { locked: true });
 }
 
 export async function unlockBrain(request, response) {
-  return updateBrainWithProperties(request, response, { locked: false });
+  return await updateBrainWithProperties(request, response, { locked: false });
 }
 
 export async function updateBrain(request, response) {
@@ -44,7 +48,7 @@ export async function updateBrain(request, response) {
   if (request.body.shape !== undefined) properties["shape"] = request.body.shape;
   if (request.body.skill !== undefined) properties["skill"] = request.body.skill;
 
-  return updateBrainWithProperties(request, response, properties);
+  return await updateBrainWithProperties(request, response, properties);
 }
 
 async function updateBrainWithProperties(request, response, properties) {

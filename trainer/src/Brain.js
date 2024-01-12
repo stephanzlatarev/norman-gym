@@ -89,7 +89,7 @@ export default class Brain {
     return result;
   }
 
-  async save() {
+  async save(status) {
     await this.model.save("file://" + STORE_FOLDER, { includeOptimizer: true });
     await this.model.save({
       save: function(model) {
@@ -97,7 +97,7 @@ export default class Brain {
         fs.writeFileSync(STORE_FOLDER + "/brain.tf", JSON.stringify(model));
       }
     });
-    await saveBrain(this.name, STORE_FOLDER);
+    await saveBrain(this.name, STORE_FOLDER, this.skill, this.shape, status);
   }
 }
 

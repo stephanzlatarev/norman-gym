@@ -55,25 +55,13 @@ export async function updateStatus(brain, data) {
   await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
 }
 
-export async function log(brain, skill, shape, progress) {
+export async function log(brain, progress) {
   const db = await connect(brain);
 
   progress.brain = brain;
   progress.time = new Date();
+
   await db.collection("progress").insertOne(progress);
-
-  const status = {
-    brain: brain,
-    skill: skill,
-    shape: shape,
-    record: progress.record.overall.loss,
-    time: Date.now(),
-    loss: progress.control.overall.loss,
-    error: progress.control.overall.error,
-    pass: progress.control.overall.pass,
-  };
-
-  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
 }
 
 export async function sample(brain, label, sample) {
@@ -109,7 +97,7 @@ export async function loadBrain(brain, folder) {
   }
 }
 
-export async function saveBrain(brain, folder) {
+export async function saveBrain(brain, folder, skill, shape, performance) {
   const db = await connect(brain);
   const bucket = new GridFSBucket(db);
 
@@ -123,4 +111,17 @@ export async function saveBrain(brain, folder) {
   await pipelineAsync(fs.createReadStream(folder + "/weights.bin").pipe(bucket.openUploadStream(brain + "-weights", { metadata: { brain: brain } })));
   await pipelineAsync(fs.createReadStream(folder + "/model.json").pipe(bucket.openUploadStream(brain + "-model", { metadata: { brain: brain } })));
   await pipelineAsync(fs.createReadStream(folder + "/brain.tf").pipe(bucket.openUploadStream(brain + "-brain", { metadata: { brain: brain } })));
+
+  // Store brain status
+  const status = {
+    brain: brain,
+    skill: skill,
+    shape: shape,
+    time: Date.now(),
+    loss: performance.loss,
+    error: performance.error,
+    pass: performance.pass,
+  };
+
+  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
 }

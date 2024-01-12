@@ -94,8 +94,7 @@ async function openEpoch(status) {
   if (shape && (brain.shape !== shape)) {
     brain.reshape(shape);
 
-    await brain.save();
-    await updateStatus(BRAIN_NAME, { shape: brain.shape });
+    await brain.save({ loss: NaN, error: NaN, pass: 0 });
 
     record = null;
   }
@@ -136,12 +135,12 @@ async function logProgress(resourceEfficiency) {
   control = await evaluate(brain, playbook);
 
   if (!record || (control.overall.loss < record.overall.loss)) {
-    await brain.save();
+    await brain.save(control.overall);
 
     record = control;
   }
 
-  await log(brain.name, brain.skill, brain.shape, { resources: { ...resources(), efficiency: resourceEfficiency }, control: control, record: record });
+  await log(brain.name, { resources: { ...resources(), efficiency: resourceEfficiency }, control: control, record: record });
 
   const prediction = await brain.predict(batch);
 

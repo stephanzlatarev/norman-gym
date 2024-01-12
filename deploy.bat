@@ -16,6 +16,13 @@ docker push docker.io/stephanzlatarev/norman-gym-trainer
 call k ngym apply -f ./kubernetes.yaml
 cd ..
 
+echo Deploying doctor...
+cd doctor
+docker build -t docker.io/stephanzlatarev/norman-gym-doctor .
+docker push docker.io/stephanzlatarev/norman-gym-doctor
+call k ngym apply -f ./kubernetes.yaml
+cd ..
+
 echo Deploying web...
 cd web
 docker build -t docker.io/stephanzlatarev/norman-gym-web .

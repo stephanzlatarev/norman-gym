@@ -1,0 +1,12 @@
+{
+  "name": "norman-gym-doctor",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node ./src/go.js"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.8.0",
+    "mongodb": "^6.0.0"
+  }
+}

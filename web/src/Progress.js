@@ -7,60 +7,41 @@ export default class Progress extends React.Component {
 
   render() {
     if (!this.props.visible) return null;
-    if (!this.props.playbooks || !this.props.progress || !this.props.indicator) return null;
+    if (!this.props.progress || !this.props.indicator) return null;
 
     let y = pery;
     let tick = pert;
 
     if (this.props.type === "log") {
-      const e = exponent(this.props.progress, this.props.playbooks, this.props.indicator);
+      const e = exponent(this.props.progress, this.props.indicator);
 
       y = (y) => logy(y, e);
       tick = (y) => logt(e - y);
     }
 
     const xstep = WIDTH / (this.props.progress.length - 1);
-    let key = 1;
+    const primary = [];
+    const secondary = [];
 
-    const series = {};
     let x = 0;
     for (const point of this.props.progress) {
-      for (const playbook in this.props.playbooks) {
-        if (!series[playbook]) {
-          series[playbook] = { color: color(this.props.playbooks[playbook]), control: [], record: [], dash: this.props.playbooks[playbook].dash };
-        }
+      if (point[this.props.indicator] >= 0) {
+        primary.push(x + "," + y(point[this.props.indicator]));
+      }
 
-        if (point.control[playbook]) {
-          series[playbook].control.push(x + "," + y(point.control[playbook][this.props.indicator]));
-        }
-
-        if (point.record[playbook]) {
-          series[playbook].record.push(x + "," + y(point.record[playbook][this.props.indicator]));
-        }
+      if (this.props.record && (this.props.record[this.props.indicator] >= 0)) {
+        secondary.push(x + "," + y(this.props.record[this.props.indicator]));
+      } else if (this.props.secondary && (point[this.props.secondary] >= 0)) {
+        secondary.push(x + "," + y(point[this.props.secondary]));
       }
 
       x += xstep;
     }
 
-    const lines = [];
-    for (const playbook in series) {
-      const data = series[playbook];
-      lines.push(
-        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.1, strokeDasharray: data.dash ? "0.1" : null }}>
-          <polyline points={ data.control.join(" ")} />
-        </g>
-      );
-      lines.push(
-        <g key={ key++ } style={{ fill: "none", stroke: data.color, strokeWidth: 0.05, strokeDasharray: data.dash ? "0.1" : null }}>
-          <polyline points={ data.record.join(" ")} />
-        </g>
-      );
-    }
-
     const grid = [];
     for (let y = 0; y <= HEIGHT; y++) {
-      grid.push(<line key={ key++ } x1="0" y1={ y } x2={ WIDTH } y2={ y } />);
-      grid.push(<text key={ key++ } x="0" y={ y + 0.6 }>{ tick(y) }</text>);
+      grid.push(<line key={ "gl" + y } x1="0" y1={ y } x2={ WIDTH } y2={ y } />);
+      grid.push(<text key={ "gt" + y } x="0" y={ y + 0.6 }>{ tick(y) }</text>);
     }
 
     return (
@@ -69,31 +50,28 @@ export default class Progress extends React.Component {
           { grid }
         </g>
 
-        { lines }
+        <g style={{ fill: "none", stroke: "black", strokeWidth: 0.1 }}>
+          <polyline points={ primary.join(" ")} />
+        </g>
+
+        <g style={{ fill: "none", stroke: "black", strokeWidth: 0.05, strokeDasharray: 0.1 }}>
+          <polyline points={ secondary.join(" ")} />
+        </g>
       </svg>
     );
   }
 }
 
-function color(playbook) {
-  return (playbook && playbook.color) ? playbook.color : "black";
-}
-
-function exponent(progress, playbooks, indicator) {
+function exponent(progress, indicator) {
   let min = Infinity;
   let max = -Infinity;
 
   for (const point of progress) {
-    for (const playbook in playbooks) {
-      if (point.control[playbook]) {
-        min = Math.min(min, point.control[playbook][indicator]);
-        max = Math.max(max, point.control[playbook][indicator]);
-      }
+    const p = point[indicator];
 
-      if (point.record[playbook]) {
-        min = Math.min(min, point.record[playbook][indicator]);
-        max = Math.max(max, point.record[playbook][indicator]);
-      }
+    if (p >= 0) {
+      min = Math.min(min, );
+      max = Math.max(max, point[indicator]);
     }
   }
 

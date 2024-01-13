@@ -24,7 +24,7 @@ export default class Controls extends React.Component {
     for (const brain of this.props.brains) {
       const style = (brain.brain === this.props.selected) ?  { backgroundColor: "AliceBlue" } : { cursor: "pointer" };
       const selectBrain = () => { onSelect(brain.brain); };
-      const state = (brain.time > Date.now() - 1000 * 60 * 60 * 2) ? "green" : "gray";
+      const state = (brain.tick > Date.now() - 1000 * 60 * 60 * 2) ? "green" : "gray";
       const icon = brain.locked ? <IconLocked sx={{ width: 10, height: 10 }} /> : <IconUnlocked sx={{ width: 10, height: 10 }} />;
 
       brains.push(
@@ -34,8 +34,7 @@ export default class Controls extends React.Component {
           <TableCell sx={ sxReguralCell }><Tooltip title={ brain.shape }><span>{ shape(brain) }</span></Tooltip></TableCell>
           <TableCell sx={ sxReguralCell }>{ format(brain.pass, "percent") }</TableCell>
           <TableCell sx={ sxOptionalCell }>{ format(brain.error, "number") }</TableCell>
-          <TableCell sx={ sxOptionalCell }>{ format(brain.loss, "exponent") }</TableCell>
-          <TableCell sx={ sxReguralCell }>{ format(brain.record, "exponent") }</TableCell>
+          <TableCell sx={ sxReguralCell }>{ format(brain.loss, "exponent") }</TableCell>
         </TableRow>
       );
     }
@@ -50,8 +49,7 @@ export default class Controls extends React.Component {
               <TableCell sx={ sxReguralCell }>SHAPE</TableCell>
               <TableCell sx={ sxReguralCell }>PASS</TableCell>
               <TableCell sx={ sxOptionalCell }>ERROR</TableCell>
-              <TableCell sx={ sxOptionalCell }>LOSS</TableCell>
-              <TableCell sx={ sxReguralCell }>RECORD</TableCell>
+              <TableCell sx={ sxReguralCell }>LOSS</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

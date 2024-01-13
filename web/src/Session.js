@@ -8,7 +8,6 @@ import Api from "./Api";
 import Controls from "./Controls";
 import Leaderboard from "./Leaderboard";
 import Progress from "./Progress";
-import Resource from "./Resource";
 import Sample from "./Sample";
 
 export default class Session extends React.Component {
@@ -87,7 +86,6 @@ export default class Session extends React.Component {
       );
     }
 
-    const playbooks = this.props.session.playbooks;
     const brain = this.props.session.brains.find(one => (one.brain === this.state.selection));
 
     return (
@@ -111,11 +109,11 @@ export default class Session extends React.Component {
               <Tab label="RAM" />
             </Tabs>
           </Box>
-          <Progress visible={ this.state.progressTab === 0 } playbooks={ playbooks } progress={ this.state.progress } indicator="pass" type="per" />
-          <Progress visible={ this.state.progressTab === 1 } playbooks={ playbooks } progress={ this.state.progress } indicator="error" type="log" />
-          <Progress visible={ this.state.progressTab === 2 } playbooks={ playbooks } progress={ this.state.progress } indicator="loss" type="log" />
-          <Resource visible={ this.state.progressTab === 3 } progress={ this.state.progress } indicator="cpu" secondary="efficiency" />
-          <Resource visible={ this.state.progressTab === 4 } progress={ this.state.progress } indicator="ram" />
+          <Progress visible={ this.state.progressTab === 0 } progress={ this.state.progress } record={ brain } indicator="pass" type="per" />
+          <Progress visible={ this.state.progressTab === 1 } progress={ this.state.progress } record={ brain } indicator="error" type="log" />
+          <Progress visible={ this.state.progressTab === 2 } progress={ this.state.progress } record={ brain } indicator="loss" type="log" />
+          <Progress visible={ this.state.progressTab === 3 } progress={ this.state.progress } indicator="efficiency" secondary="cpu" type="per" />
+          <Progress visible={ this.state.progressTab === 4 } progress={ this.state.progress } indicator="ram" type="per" />
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>

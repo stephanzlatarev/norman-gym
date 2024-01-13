@@ -1,7 +1,6 @@
 import Brain from "./Brain.js";
 import Playbook from "./Playbook.js";
-import { findBestSample, findRandomSample, findWorstSample } from "./analysis.js";
-import { log, readStatus, updateStatus, sample } from "./mongo.js";
+import { readStatus, updateStatus } from "./mongo.js";
 import resources from "./resources.js";
 import { bestShape } from "./shape.js";
 
@@ -33,7 +32,7 @@ async function go() {
       status = await readStatus(BRAIN_NAME);
 
       if (hasAssignmentChanged(status)) {
-        await updateStatus(BRAIN_NAME, { loss: NaN, error: NaN, pass: 0 });
+        await updateStatus(BRAIN_NAME, {});
         clearAssignmentMetrics();
       } else {
         await closeEpoch(resourceEfficiency);
@@ -140,13 +139,7 @@ async function logProgress(resourceEfficiency) {
     record = control;
   }
 
-  await log(brain.name, { resources: { ...resources(), efficiency: resourceEfficiency }, control: control, record: record });
-
-  const prediction = await brain.predict(batch);
-
-  await sample(brain.name, "best", findBestSample(batch, prediction));
-  await sample(brain.name, "random", findRandomSample(batch, prediction));
-  await sample(brain.name, "worst", findWorstSample(batch, prediction));
+  await updateStatus(BRAIN_NAME, { ...control.overall, ...resources(), efficiency: resourceEfficiency });
 }
 
 async function evaluate(brain, playbook) {

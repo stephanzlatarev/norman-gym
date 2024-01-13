@@ -43,33 +43,19 @@ export async function readStatus(brain) {
   return await db.collection("brains").findOne({ brain: brain });
 }
 
-export async function updateStatus(brain, data) {
-  const db = await connect(brain);
-
-  const status = {
-    ...data,
-    brain: brain,
-    time: Date.now(),
-  };
-
-  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
-}
-
-export async function log(brain, progress) {
+export async function updateStatus(brain, progress) {
   const db = await connect(brain);
 
   progress.brain = brain;
   progress.time = new Date();
 
   await db.collection("progress").insertOne(progress);
-}
 
-export async function sample(brain, label, sample) {
-  const db = await connect(brain);
+  const status = {
+    tick: Date.now(),
+  };
 
-  sample.brain = brain;
-  sample.label = label;
-  await db.collection("samples").findOneAndReplace({ brain: brain, label: label }, sample, { upsert: true });
+  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
 }
 
 export async function leaderboard(brain, skill) {
@@ -77,7 +63,7 @@ export async function leaderboard(brain, skill) {
 
   const leaderboard = await db.collection("brains").find({ skill: skill }).toArray();
 
-  leaderboard.sort((a, b) => (a.record - b.record));
+  leaderboard.sort((a, b) => (a.loss - b.loss));
 
   return leaderboard;
 }

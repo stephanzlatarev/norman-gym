@@ -19,7 +19,7 @@ async function connect() {
   return db;
 }
 
-export async function getBrainForExamination() {
+export async function getBrainForExamination(startTime) {
   const db = await connect();
   const brains = await db.collection("brains").find({}).toArray();
   const examinations = await db.collection("examinations").find({}).toArray();
@@ -27,7 +27,7 @@ export async function getBrainForExamination() {
   for (const brain of brains) {
     const examination = examinations.find(one => (one.brain === brain.brain));
 
-    if (!examination || !examination.time || (examination.time < brain.time)) {
+    if (!examination || !examination.time || (examination.time < brain.time) || (examination.time < startTime)) {
       return brain;
     }
   }

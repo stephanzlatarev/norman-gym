@@ -15,6 +15,10 @@ export async function readBrains(_, response) {
   return sendResponse(response, await list("brains", {}));
 }
 
+export async function readExamination(request, response) {
+  return sendResponse(response, await list("examinations", { brain: request.params.brain }));
+}
+
 export async function readProgress(request, response) {
   const data = {
     progress: await list("progress", { brain: request.params.brain }),

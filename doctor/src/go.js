@@ -2,12 +2,13 @@ import Brain from "./Brain.js";
 import Playbook from "./Playbook.js";
 import { getBrainForExamination, storeExamination } from "./mongo.js";
 
+const START_TIME = Date.now();
 const WAIT_TIME = 10000;
-const BATCH_SIZE = 10000;
+const BATCH_SIZE = 100;
 
 async function go() {
   while (true) {
-    const brain = await getBrainForExamination();
+    const brain = await getBrainForExamination(START_TIME);
 
     if (brain) {
       console.log();
@@ -32,6 +33,7 @@ async function examineBrain(name, skill) {
   const playbook = new Playbook(skill);
   await playbook.load();
 
+  // Examine performance by playbook
   for (const play of playbook.playbooks) {
     const batch = playbook.batch(BATCH_SIZE, play);
     const result = await brain.evaluate(batch, playbook.meta.fidelity);
@@ -39,8 +41,22 @@ async function examineBrain(name, skill) {
     examination[play.name] = result;
   }
 
+  // Read neurons
+  const neurons = [];
+  for (const layer of brain.model.layers) {
+    const tensors = layer.getWeights();
+
+    if (tensors.length) {
+      const weights = tensors[0];
+      const bias = tensors[1];
+
+      neurons.push({ weights: Array.from(weights.arraySync()), bias: Array.from(bias.dataSync()) });
+    }
+  }
+  
   return {
     brain: name,
+    neurons: neurons,
     playbook: playbook.meta,
     data: examination,
   };

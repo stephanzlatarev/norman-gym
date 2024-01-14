@@ -28,6 +28,11 @@ export default class Brain {
     const expected = tf.tensor(batch.output, [batch.length, batch.outputSize]);
     const actual = this.model.predict(input, { batchSize: batch.length, verbose: 0 });
 
+    const samples = {
+      input: Array.from(input.arraySync()),
+      expected: Array.from(expected.arraySync()),
+      actual: Array.from(actual.arraySync()),
+    };
     const evaluation = {
       loss: await get(loss, actual, expected),
       error: await get(error, actual, expected),
@@ -36,7 +41,10 @@ export default class Brain {
 
     tf.engine().endScope();
 
-    return evaluation;
+    return {
+      samples: samples,
+      evaluation: evaluation,
+    }
   }
 
   async predict(batch) {

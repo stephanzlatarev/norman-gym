@@ -26,17 +26,18 @@ export default class Brain {
 
     const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
     const expected = tf.tensor(batch.output, [batch.length, batch.outputSize]);
-    const actual = this.model.predict(input, { batchSize: batch.length, verbose: 0 });
+    const observed = this.model.predict(input, { batchSize: batch.length, verbose: 0 });
 
     const samples = {
-      input: Array.from(input.arraySync()),
-      expected: Array.from(expected.arraySync()),
-      actual: Array.from(actual.arraySync()),
+      count: batch.length,
+      input: write(input.dataSync()),
+      expected: write(expected.dataSync()),
+      observed: write(observed.dataSync()),
     };
     const evaluation = {
-      loss: await get(loss, actual, expected),
-      error: await get(error, actual, expected),
-      pass: await get((actual, expected) => pass(actual, expected, fidelity), actual, expected),
+      loss: await get(loss, observed, expected),
+      error: await get(error, observed, expected),
+      pass: await get((actual, expected) => pass(actual, expected, fidelity), observed, expected),
     };
 
     tf.engine().endScope();
@@ -45,17 +46,6 @@ export default class Brain {
       samples: samples,
       evaluation: evaluation,
     }
-  }
-
-  async predict(batch) {
-    tf.engine().startScope();
-
-    const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
-    const result = await this.model.predict(input, { batchSize: batch.length, verbose: 0 }).array();
-
-    tf.engine().endScope();
-
-    return result;
   }
 
 }
@@ -76,4 +66,8 @@ function error(actual, expected) {
 
 function pass(actual, expected, fidelity) {
   return tf.scalar(1).sub(actual.sub(expected).abs().max(1).sub(fidelity).step().mean());
+}
+
+function write(array) {
+  return Buffer.from(array.buffer).toString("base64");
 }

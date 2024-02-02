@@ -47,19 +47,24 @@ async function examineBrain(name, skill) {
     const tensors = layer.getWeights();
 
     if (tensors.length) {
-      const weights = tensors[0];
-      const bias = tensors[1];
-
-      neurons.push({ weights: Array.from(weights.arraySync()), bias: Array.from(bias.dataSync()) });
+      neurons.push({
+        units: layer.units,
+        weights: write(tensors[0].dataSync()),
+        bias: write(tensors[1].dataSync())
+      });
     }
   }
-  
+
   return {
     brain: name,
     neurons: neurons,
     playbook: playbook.meta,
     data: examination,
   };
+}
+
+function write(array) {
+  return Buffer.from(array.buffer).toString("base64");
 }
 
 go();

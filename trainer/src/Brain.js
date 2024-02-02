@@ -22,6 +22,7 @@ export default class Brain {
 
       this.model = await tf.loadLayersModel("file://" + STORE_FOLDER + "/model.json");
       this.shape = compile(this.model);
+      this.fit = this.model.model.makeTrainFunction();
     } else {
       this.reshape(this.shape);
     }
@@ -45,22 +46,25 @@ export default class Brain {
 
     this.model = model;
     this.shape = compile(model);
+    this.fit = model.model.makeTrainFunction();
   }
 
-  async fit(batch, epochs) {
+  train(batch, epochs) {
     tf.engine().startScope();
 
-    const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);
-    const output = tf.tensor(batch.output, [batch.length, batch.outputSize]);
+    const data = [
+      tf.tensor(batch.input, [batch.length, batch.inputSize]),
+      tf.tensor(batch.output, [batch.length, batch.outputSize])
+    ];
 
-    const result = await this.model.fit(input, output, { epochs: epochs, batchSize: batch.length, shuffle: true, verbose: 0 });
+    for (let epoch = 0; epoch < epochs; epoch++) {
+      this.fit(data);
+    }
 
     tf.engine().endScope();
-
-    return result.history.loss[0];
   }
 
-  async evaluate(batch) {
+  async measure(batch) {
     tf.engine().startScope();
 
     const input = tf.tensor(batch.input, [batch.length, batch.inputSize]);

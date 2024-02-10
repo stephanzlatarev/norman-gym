@@ -14,15 +14,19 @@ export default class Brain {
     this.skill = skill;
     this.shape = shape;
     this.fidelity = fidelity ? fidelity : 0.01;
+    this.timestamp = 0;
   }
 
   async load() {
-    if (await loadBrain(this.name, STORE_FOLDER)) {
+    const timestamp = await loadBrain(this.name, STORE_FOLDER);
+
+    if (timestamp) {
       console.log("Loading brain...");
 
       this.model = await tf.loadLayersModel("file://" + STORE_FOLDER + "/model.json");
       this.shape = compile(this.model);
       this.fit = this.model.model.makeTrainFunction();
+      this.timestamp = timestamp;
     } else {
       this.reshape(this.shape);
     }
@@ -47,6 +51,7 @@ export default class Brain {
     this.model = model;
     this.shape = compile(model);
     this.fit = model.model.makeTrainFunction();
+    this.timestamp = Date.now();
   }
 
   train(batch, epochs) {

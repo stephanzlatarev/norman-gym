@@ -69,16 +69,20 @@ export async function leaderboard(brain, skill) {
 }
 
 export async function loadBrain(brain, folder) {
-  const db = await connect(brain);
+  const db = await connect();
   const bucket = new GridFSBucket(db);
+  const records = bucket.find({ filename: brain + "-weights" });
 
-  if (await bucket.find({ filename: brain + "-weights" }).hasNext()) {
+  if (await records.hasNext()) {
+    const record = await records.next();
+    const timestamp = new Date(record.uploadDate).getTime();
+
     await pipelineAsync(bucket.openDownloadStreamByName(brain + "-weights").pipe(fs.createWriteStream(folder + "/weights.bin")));
 
     if (await bucket.find({ filename: brain + "-model" }).hasNext()) {
       await pipelineAsync(bucket.openDownloadStreamByName(brain + "-model").pipe(fs.createWriteStream(folder + "/model.json")));
 
-      return fs.existsSync(folder + "/model.json");
+      return fs.existsSync(folder + "/model.json") ? timestamp : null;
     }
   }
 }

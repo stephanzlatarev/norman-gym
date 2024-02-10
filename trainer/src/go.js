@@ -69,13 +69,17 @@ async function skipEpoch() {
 
 async function openEpoch(status) {
   // Ensure the playbook is loaded
-  if (skill !== status.skill) {
+  if (!playbook || (skill !== status.skill)) {
     skill = status.skill;
+    brain = null;
     record = null;
 
     playbook = new Playbook(skill);
     await playbook.load();
+  }
 
+  // Ensure the brain is up-to-date
+  if (!brain || (status.time > brain.timestamp)) {
     brain = new Brain(BRAIN_NAME, playbook.meta.skill, playbook.meta.shape, playbook.meta.fidelity);
     await brain.load();
   }

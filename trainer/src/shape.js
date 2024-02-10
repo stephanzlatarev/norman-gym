@@ -108,6 +108,8 @@ export async function bestShape(playbook, brain, status) {
 }
 
 function areCompatibleShapes(a, b) {
+  if (!a || !b) return false;
+
   const aa = shapeToInfo(a);
   const bb = shapeToInfo(b);
 

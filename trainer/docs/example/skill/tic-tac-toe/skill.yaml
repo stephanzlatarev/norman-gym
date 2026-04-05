@@ -1,0 +1,63 @@
+# This is a skill for playing a game of Tic-Tac-Toe
+name: Play Tic-Tac-Toe
+
+observe:
+
+  marks:
+
+    # The game board has 9 cells - 3 rows, 3 columns.
+    limit: 9
+
+    # Observe the marks on the game board with their row, column, and player
+    attributes:
+      - name: row
+        type: space
+        range: [1, 3]
+
+      - name: col
+        type: space
+        range: [1, 3]
+
+      - name: player
+        type: label
+        options: ["X", "O"]
+
+act:
+
+  marks:
+
+    # The brain does not modify existing marks
+    modify: false
+
+    # The brain creates one new mark
+    create: 1
+
+    # The move consists of placement and player
+    attributes:
+      - name: row
+      - name: col
+      - name: player
+
+playbooks:
+
+  open:
+
+    - input: []                   # When this is the start of the game
+      output: [ [2, 2, "X"] ]     # Then take the center
+
+    - input: [ [2, 2, "X"] ]      # When opponent opened by taking the center
+      output: [ [1, 1, "O"] ]     # Then respond by taking the top-left corner
+
+    - input: [ [2, 2, "O"] ]      # When opponent opened by taking the center
+      output: [ [1, 1, "X"] ]     # Then respond by taking the top-left corner
+
+    - script: playbook-open.js    # Take the center on other opening by the opponent
+
+  fork:
+    - script: playbook-fork.js
+
+  block:
+    - script: playbook-block.js
+
+  win:
+    - script: playbook-win.js

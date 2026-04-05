@@ -45,5 +45,3 @@ export default async function(name, skill) {
 function write(array) {
   return Buffer.from(array.buffer).toString("base64");
 }
-
-go();

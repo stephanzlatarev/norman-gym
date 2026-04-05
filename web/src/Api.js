@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "https://ngym.ddns.net/api/";
+const API = "https://gym.superskill.me/api/";
 
 class Api {
 

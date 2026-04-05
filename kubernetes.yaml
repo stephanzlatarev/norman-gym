@@ -51,7 +51,23 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 10Gi
+            storage: 20Gi
         storageClassName: default
 
 ---
+
+kind: Issuer
+apiVersion: cert-manager.io/v1
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: stephan.zlatarev@sap.com
+    profile: tlsserver
+    privateKeySecretRef:
+      name: letsencrypt
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx

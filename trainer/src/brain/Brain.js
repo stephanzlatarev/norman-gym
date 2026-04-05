@@ -1,5 +1,7 @@
 import tf from "./tf.js";
-import { build, validate, computeMetadata } from "./ops/create.js";
+import build from "./ops/build.js";
+import validate from "./ops/validate.js";
+import computeMetadata from "./ops/meta.js";
 import "./ops/register.js";
 
 const OPTIMIZER = "adam";

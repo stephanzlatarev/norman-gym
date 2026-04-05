@@ -66,6 +66,18 @@ export default function computeMetadata(skill, config) {
   const totalObjects = objectOffset;
   const totalCreateObjects = groups.reduce((sum, g) => sum + g.create, 0);
 
+  // Build loss mapping and output names from act groups
+  const lossMap = {};
+  const outputNames = [];
+  for (const group of groups) {
+    if (!skill.act[group.name]) continue;
+    for (const attr of group.actAttrs) {
+      const outputName = `${group.name}_${attr.name}_out`;
+      lossMap[outputName] = (attr.type === "label") ? "categoricalCrossentropy" : "meanSquaredError";
+      outputNames.push(outputName);
+    }
+  }
+
   return {
     attributeWidth,
     objectWidth,
@@ -75,5 +87,7 @@ export default function computeMetadata(skill, config) {
     totalObjects,
     totalCreateObjects,
     numGroups: observeGroupNames.length,
+    lossMap,
+    outputNames,
   };
 }

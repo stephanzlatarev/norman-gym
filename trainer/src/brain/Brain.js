@@ -12,17 +12,15 @@ export default class Brain {
     this.skill = skill;
     this.config = config;
 
-    const { model, meta, lossMap, outputNames } = build(skill, config);
+    const { model, meta } = build(skill, config);
     this.model = model;
     this.meta = meta;
-    this.lossMap = lossMap;
-    this.outputNames = outputNames;
   }
 
   compile(optimizer, lossWeights) {
     this.model.compile({
       optimizer: optimizer || OPTIMIZER,
-      loss: this.lossMap,
+      loss: this.meta.lossMap,
       lossWeights: lossWeights || undefined,
     });
 
@@ -72,27 +70,6 @@ export default class Brain {
     brain.meta = meta;
 
     brain.model = await tf.loadLayersModel(path);
-
-    // Build loss mapping
-    const lossMap = {};
-    for (const group of meta.groups) {
-      if (!skill.act[group.name]) continue;
-      for (const attr of group.actAttrs) {
-        const outputName = `${group.name}_${attr.name}_out`;
-        lossMap[outputName] = (attr.type === "label") ? "categoricalCrossentropy" : "meanSquaredError";
-      }
-    }
-    brain.lossMap = lossMap;
-
-    // Build output names list
-    const outputNames = [];
-    for (const group of meta.groups) {
-      if (!skill.act[group.name]) continue;
-      for (const attr of group.actAttrs) {
-        outputNames.push(`${group.name}_${attr.name}_out`);
-      }
-    }
-    brain.outputNames = outputNames;
 
     return brain;
   }

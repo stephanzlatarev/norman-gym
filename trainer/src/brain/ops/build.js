@@ -234,14 +234,11 @@ export default function build(skill, config) {
 
   // Build output heads
   const outputList = [];
-  const outputNames = [];
   for (const group of groups) {
     if (!skill.act[group.name]) continue;
 
     for (const attr of group.actAttrs) {
-      const outputName = `${group.name}_${attr.name}_out`;
       outputList.push(buildOutputHead(group, attr, objectWidth, allObjects));
-      outputNames.push(outputName);
     }
   }
 
@@ -252,15 +249,5 @@ export default function build(skill, config) {
     name: "brain",
   });
 
-  // Build loss mapping
-  const lossMap = {};
-  for (const group of groups) {
-    if (!skill.act[group.name]) continue;
-    for (const attr of group.actAttrs) {
-      const outputName = `${group.name}_${attr.name}_out`;
-      lossMap[outputName] = (attr.type === "label") ? "categoricalCrossentropy" : "meanSquaredError";
-    }
-  }
-
-  return { model, meta, lossMap, outputNames };
+  return { model, meta };
 }

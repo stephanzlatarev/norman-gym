@@ -93,16 +93,18 @@ Architecture Requirements
   a. LayerNorm → Grouped Query Attention (GQA) → Dropout → Residual add.
   b. LayerNorm → Feed-Forward Network → Dropout → Residual add.
 - Grouped Query Attention (GQA):
-  - Q projections: attentionHeads sets of projections, each of size objectWidth / attentionHeads.
-  - K and V projections: attentionGroups sets of projections, each of size objectWidth / attentionHeads, shared across attentionHeads / attentionGroups query heads.
-  - Output projection: concatenate all head outputs and apply a linear projection objectWidth → objectWidth (W_O).
+  - Q projection: a single dense layer of size attentionHeads × headDim (where headDim = objectWidth / attentionHeads).
+  - K projection: a single dense layer of size attentionGroups × headDim.
+  - V projection: a single dense layer of size attentionGroups × headDim.
+  - Q/K/V projections are standard dense layers applied before the GQA layer. The GQA layer itself reshapes Q/K/V into multi-head form, tiles K/V when headsPerGroup > 1, computes scaled dot-product attention with softmax, and concatenates head outputs.
+  - Output projection: a single dense layer objectWidth → objectWidth (W_O), applied after the GQA layer.
 - Feed-Forward Network (FFN):
   - Linear layer: objectWidth → brainWidth, followed by ReLU activation.
   - Linear layer: brainWidth → objectWidth.
   - Dropout applied after the second linear layer.
 - Dropout is applied after the attention output projection and after the FFN, both before the residual add.
 - Stack brainLayers transformer blocks sequentially.
-- Apply a final LayerNorm after the last transformer block, before the output heads.
+- Apply a final LayerNorm after the last transformer block, before the output heads. This is implemented as a custom `FinalLayerNorm` layer (not the built-in `tf.layers.layerNormalization`) to ensure save/load compatibility via `tf.serialization.registerClass()`.
 
 5. Output Heads (Un-mixer, per act group):
 - Build one output head per act attribute within each group.
@@ -140,6 +142,17 @@ Prediction Semantics
 - For both modify and create outputs: model predicts logits over label options.
 - Inference class is argmax over logits.
 
+Brain Wrapper API (Mandatory)
+The Brain class wraps the underlying tf.LayersModel and provides the following methods:
+1. `constructor(skill, config)`: Validates inputs, builds the model and computes metadata.
+2. `compile(optimizer, lossWeights)`: Compiles with per-output loss functions derived from the skill definition (meanSquaredError for space/scalar, categoricalCrossentropy for label). Calls `model.makeTrainFunction()` to obtain the low-level fit function.
+3. `predict(input)`: Forward pass with tensor I/O. Accepts nested `{ groupName: { attrName: tensor } }` and returns the same structure for act outputs.
+4. `decide(observation)`: Forward pass with pure JSON I/O. Accepts an observation object where each group is an array of tuples (arrays of attribute values in skill-definition order). Returns the same tuple-array structure for act outputs. Internally encodes JSON to tensors (padding to group limits, mapping label strings to 1-based indices) and decodes output tensors back to JSON (rounding space values, argmax for labels). All intermediate tensors are disposed via `tf.tidy()`.
+5. `train(inputData, targetData, epochs)`: Trains for the given number of epochs using the low-level fit function. Uses `tf.engine().startScope()/endScope()` for tensor memory management.
+6. `save(path, options)`: Delegates to `model.save()`.
+7. `static load(path, skill, config)`: Loads a saved model, rebuilds metadata and loss mapping.
+8. `summary()`: Delegates to `model.summary()`.
+
 Persistence and Chained Training (Mandatory)
 The trainer runs as a chain of Node.js processes. Each process may be restarted at any time and must resume training from the last saved snapshot rather than starting from scratch. The existing Brain class implements this pattern:
 
@@ -164,9 +177,18 @@ The trainer runs as a chain of Node.js processes. Each process may be restarted 
 - The `makeTrainFunction()` pattern must be supported for low-level training loops.
 
 Deliverables
-1. Brain creator function with (skill, config) input parameters.
-2. Underlying Transformer model.
-3. A short executable script that builds a Tic-Tac-Toe Brain from the example skill.yaml and a sample config.
+1. `brain/tf.js` — Polyfill wrapper for Node.js 23+ compatibility.
+2. `brain/layers/SinusoidalEncoding.js` — Attribute-local sinusoidal encoding layer.
+3. `brain/layers/GroupPositionalEncoding.js` — Fixed sinusoidal group-level positional encoding layer.
+4. `brain/layers/CreateTokens.js` — Learned embeddings for create tokens.
+5. `brain/layers/SliceTokens.js` — Slices a token range from the sequence dimension.
+6. `brain/layers/GroupedQueryAttention.js` — Grouped Query Attention layer (reshape, scale, softmax).
+7. `brain/layers/FinalLayerNorm.js` — Final layer normalization before output heads.
+8. `brain/ops/register.js` — Imports all layer classes and registers them with `tf.serialization.registerClass()`.
+9. `brain/ops/create.js` — Validation, metadata computation, and functional-API model assembly. Exports `build(skill, config)`, `validate(skill, config)`, and `computeMetadata(skill, config)`.
+10. `brain/ops/persist.js` — File-based save/load helpers including `brain.tf` snapshot.
+11. `brain/Brain.js` — Wrapper class with `predict`, `decide`, `train`, `compile`, `save`, `load`, and `summary`.
+12. `demo.js` — Executable script that builds a Tic-Tac-Toe Brain, trains it, tests `predict` and `decide`, and verifies save/load.
 
 Acceptance Criteria
 1. build(skill, config) returns a model with a working forward pass.
@@ -179,7 +201,14 @@ Acceptance Criteria
 8. Any custom layers are registered with tf.serialization.registerClass().
 
 Implementation Notes
-1. Confirm that tf.layers.dropout correctly respects the training flag when used with the functional API and makeTrainFunction(). Verify during implementation.
+1. Node.js 23+ removed `util.isNullOrUndefined`. A polyfill is required before importing `@tensorflow/tfjs-node`. This is handled in `brain/tf.js`.
+2. `tf.dot()` only works on rank-1 and rank-2 tensors. Use `tf.matMul()` for 3D+ tensors (e.g., in the GQA attention computation).
+3. `tf.model()` outputs must be an array, not an object. The wrapper maps between the flat output array and the grouped output structure.
+4. `inputShape` passed to `build()` in custom layers is already an array like `[null, 10, 128]` — do not unwrap it with `Array.isArray` checks.
+5. Fixed shapes (not `null`) are needed for tensor dimensions in the functional API inputs. The group limit and create counts must be concrete values.
+6. GQA dropout uses `tf.dropout()` with an explicit `kwargs.training` flag check inside the custom layer's `call()`, not `tf.layers.dropout`, because the dropout is applied to attention weights (an intermediate value), not to a layer output.
+7. The final LayerNorm is a custom `FinalLayerNorm` layer rather than the built-in `tf.layers.layerNormalization` to ensure it is registered with `tf.serialization.registerClass()` and survives save/load.
+8. `tf.layers.dropout` in the functional API correctly respects the training flag when used with `makeTrainFunction()`.
 
 Out of Scope
 1. Full training pipeline.

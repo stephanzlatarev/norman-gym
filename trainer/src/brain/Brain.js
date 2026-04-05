@@ -1,6 +1,6 @@
 import tf from "./tf.js";
-import { build, validate, computeMetadata } from "./create.js";
-import "./layers.js"; // Ensure custom layers are registered
+import { build, validate, computeMetadata } from "./ops/create.js";
+import "./ops/register.js";
 
 const OPTIMIZER = "adam";
 

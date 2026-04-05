@@ -1,12 +1,10 @@
-import tf from "./tf.js";
-import {
-  SinusoidalEncoding,
-  GroupPositionalEncoding,
-  CreateTokens,
-  SliceTokens,
-  GQAAttention,
-  FinalLayerNorm,
-} from "./layers.js";
+import tf from "../tf.js";
+import SinusoidalEncoding from "../layers/SinusoidalEncoding.js";
+import GroupPositionalEncoding from "../layers/GroupPositionalEncoding.js";
+import CreateTokens from "../layers/CreateTokens.js";
+import SliceTokens from "../layers/SliceTokens.js";
+import GroupedQueryAttention from "../layers/GroupedQueryAttention.js";
+import FinalLayerNorm from "../layers/FinalLayerNorm.js";
 
 // --- Validation ---
 
@@ -231,7 +229,7 @@ function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config)
   let V = tf.layers.dense({ units: config.attentionGroups * headDim, name: `${p}_V` }).apply(normed);
 
   // GQA attention (reshape + scaled dot-product, no learnable weights)
-  let attnOut = new GQAAttention({
+  let attnOut = new GroupedQueryAttention({
     objectWidth,
     attentionHeads: config.attentionHeads,
     attentionGroups: config.attentionGroups,

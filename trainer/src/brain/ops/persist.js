@@ -1,7 +1,5 @@
 import fs from "fs";
-import tf from "./tf.js";
-import Brain from "./Brain.js";
-import "./layers.js"; // Ensure custom layers are registered
+import Brain from "../Brain.js";
 
 const STORE_FOLDER = process.cwd();
 

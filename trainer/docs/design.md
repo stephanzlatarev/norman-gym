@@ -162,20 +162,33 @@ Although Option C (hybrid) was initially considered, the persistence constraint 
 ```
 src/
   brain/
-    # Component classes — one file per logical block of the transformer
-    Encoder.js            # Attribute encoders + spatial encoding
-    Mixer.js              # Per-group concatenation + projection
-    AttentionHead.js      # Grouped Query Attention (GQA) layer
-    TransformerBlock.js   # Attention + feed-forward + layer norm
-    OutputHead.js         # Per-act-attribute regression/classification heads
+    # Polyfill
+    tf.js                       # Polyfill wrapper for Node.js 23+
+                                #   (util.isNullOrUndefined), re-exports
+                                #   @tensorflow/tfjs-node
 
-    # Operation functions — one file per operation over the transformer
-    create.js             # Validation and assembly (builds a Brain from skill + config)
-    persist.js            # Load and store (save/load via tf.LayersModel and GridFS)
+    # Component classes — one file per custom TF.js layer
+    layers/
+      SinusoidalEncoding.js       # Attribute-local sinusoidal encoding
+      GroupPositionalEncoding.js   # Fixed sinusoidal group-level positional encoding
+      CreateTokens.js             # Learned embeddings for create tokens
+      SliceTokens.js              # Slices a token range from the sequence dimension
+      GroupedQueryAttention.js    # Grouped Query Attention (reshape, scale, softmax)
+      FinalLayerNorm.js           # Final layer normalization before output heads
+
+    # Operation functions
+    ops/
+      register.js                 # Imports all layer classes and registers them
+                                  #   with tf.serialization.registerClass()
+      create.js                   # Validation, metadata computation, and model
+                                  #   assembly via functional API
+                                  #   Exports: build, validate, computeMetadata
+      persist.js                  # File-based save/load helpers including
+                                  #   brain.tf snapshot
 
     # Model wrapper
-    Brain.js              # Encapsulates the transformer with its components;
-                          #   passed as input to operation functions
+    Brain.js                    # Wrapper class with grouped I/O (predict,
+                                #   decide, train, compile, save, load, summary)
 ```
 
 **C. Two files: creator + model**
@@ -184,7 +197,7 @@ src/
 
 ### Decision: Option B
 
-Modular files match the plan's clear separation of concerns (encoders, mixer, core, heads). Each file stays small and testable. The existing codebase already separates `Brain.js`, `shape.js`, `Playbook.js` — this continues that pattern under a `brain/` subfolder to avoid cluttering `src/`.
+Modular files organized by role under a `brain/` subfolder. Each custom TF.js layer is its own file under `layers/`. Registration of all layer classes with `tf.serialization.registerClass()` is centralized in `ops/register.js`. Operation functions (`create.js`, `persist.js`) live under `ops/`. A `tf.js` polyfill wrapper handles Node.js 23+ compatibility (`util.isNullOrUndefined` was removed). `Brain.js` wraps the model with grouped I/O.
 
 ---
 
@@ -210,9 +223,10 @@ All three files (`model.json`, `weights.bin`, `brain.tf`) are stored in GridFS k
 4. **Deterministic reconstruction**: Given a skill and config, the creator function must produce a model with the exact same layer topology every time. This ensures that after loading weights from a snapshot, the weight shapes match. Layer names should be deterministic (not auto-generated) to avoid mismatches.
 
 5. **Compile and train interface**: The wrapper must expose:
-   - `compile(optimizer, loss)` delegating to the inner `tf.LayersModel.compile()`.
+   - `compile(optimizer, lossWeights)` delegating to the inner `tf.LayersModel.compile()`. The loss mapping is derived automatically from the skill definition (meanSquaredError for space/scalar, categoricalCrossentropy for label). Optional `lossWeights` allow per-output weighting.
    - Access to `model.makeTrainFunction()` for the low-level training loop (functional-API models expose this directly, unlike `tf.Sequential` which requires `model.model.makeTrainFunction()`).
    - `save(path, options)` and static `load(path, skill, config)` that rebuilds the wrapper structure and loads weights into it.
+   - `decide(observation)` for pure JSON-in / JSON-out inference without exposing tensors to the caller.
 
 ### Decision
 

@@ -42,33 +42,33 @@ Aligns naturally with the skill definition, makes per-attribute encoding straigh
 
 ---
 
-## Decision 2: Output Token Selection for Act
+## Decision 2: Output Object Selection for Act
 
 Each act group specifies `modify` (boolean) and `create` (non-negative integer). When `modify` is true, the brain predicts updated attributes for all observed objects in the group. When `create` > 0, the brain predicts attributes for that many new objects. Both can be active simultaneously.
 
-The question is how to produce output tokens for modified vs. created objects.
+The question is how to produce outputs for modified vs. created objects.
 
 ### Options
 
-**A. Reuse observe tokens for modify, append learned tokens for create**
-- When `modify: true`, the group's observe tokens (from the transformer output) feed the output heads directly — one prediction per observed object. Each output head is a single linear layer.
-- When `create > 0`, append `create` learnable "query" tokens to the transformer input for that group. These participate in self-attention and then feed the output heads (single linear layers).
-- Total tokens = sum of limits + sum of create values across act groups.
-- Clean separation: observe tokens handle modification; dedicated tokens handle creation.
+**A. Reuse observe objects for modify, append learned objects for create**
+- When `modify: true`, the group's observe objects (from the transformer output) feed the output heads directly — one prediction per observed object. Each output head is a single linear layer.
+- When `create > 0`, append `create` learnable "query" objects to the transformer input for that group. These participate in self-attention and then feed the output heads (single linear layers).
+- Total objects = sum of limits + sum of create values across act groups.
+- Clean separation: observe objects handle modification; dedicated objects handle creation.
 
-**B. Always use dedicated tokens**
-- Append `(modify ? limit : 0) + create` query tokens per act group.
-- Observe tokens never directly produce output.
-- Uniform handling but wastes tokens when `modify: true` (duplicates the observe slots).
+**B. Always use dedicated objects**
+- Append `(modify ? limit : 0) + create` query objects per act group.
+- Observe objects never directly produce output.
+- Uniform handling but wastes objects when `modify: true` (duplicates the observe slots).
 
-**C. Cross-attention for create tokens only**
-- Observe tokens produce modify outputs directly.
-- Create tokens use a separate cross-attention layer attending over all object tokens.
+**C. Cross-attention for create objects only**
+- Observe objects produce modify outputs directly.
+- Create objects use a separate cross-attention layer attending over all objects.
 - More flexible for creation but adds architectural complexity.
 
 ### Decision: Option A
 
-Reusing observe tokens for modification is natural — the transformer already contextualizes them. Modify outputs predict deltas for continuous attributes and logits for labels. Appending learned query tokens only for `create` keeps the token count minimal; create outputs predict absolute values for continuous attributes (no current value exists) and logits for labels. The group-level positional encoding is added element-wise to both observe tokens and create tokens (create tokens receive the same group encoding as their corresponding observe group). The metadata map tracks: group name → observe offset/limit (for modify) and create offset/count (for new objects).
+Reusing observe objects for modification is natural — the transformer already contextualizes them. Modify outputs predict deltas for continuous attributes and logits for labels. Appending learned query objects only for `create` keeps the object count minimal; create outputs predict absolute values for continuous attributes (no current value exists) and logits for labels. The group-level positional encoding is added element-wise to both observe objects and create objects (create objects receive the same group encoding as their corresponding observe group). The metadata map tracks: group name → observe offset/limit (for modify) and create offset/count (for new objects).
 
 ---
 
@@ -99,9 +99,9 @@ Fixed sinusoidal with range normalization. It's parameter-free, deterministic, a
 
 ---
 
-## Decision 4: Multi-Group Token Ordering
+## Decision 4: Multi-Group Object Ordering
 
-When multiple observe groups exist, the mixer produces tokens per group. How are they arranged in the `(batch, totalObjects, objectWidth)` tensor?
+When multiple observe groups exist, the mixer produces objects per group. How are they arranged in the `(batch, totalObjects, objectWidth)` tensor?
 
 ### Options
 
@@ -111,17 +111,17 @@ When multiple observe groups exist, the mixer produces tokens per group. How are
 - A metadata map records the offset and length of each group's slice.
 - Simple and predictable.
 
-**B. Interleave tokens across groups**
-- Alternate tokens from each group.
+**B. Interleave objects across groups**
+- Alternate objects from each group.
 - No clear benefit for set-style attention.
 
 **C. Add group-type embeddings instead of fixing order**
-- Concatenate in any order but add a learned "group embedding" to each token so the transformer can distinguish groups.
+- Concatenate in any order but add a learned "group embedding" to each object so the transformer can distinguish groups.
 - Order-invariant.
 
 ### Decision: Option A with group-level positional encoding
 
-Concatenate in definition order for deterministic slicing. Instead of learned group embeddings, apply a fixed sinusoidal positional encoding based on the group index. All tokens within the same group receive the same encoding value (their group index), so intra-group order is not imposed and set semantics are preserved. Tokens from different groups receive different encoding values, giving the transformer a zero-parameter signal to distinguish groups. Create tokens receive the same group-level encoding as the observe tokens of their corresponding group, so the transformer can associate create tokens with their group. The group-level encoding uses sin+cos pairs over `objectWidth` (not `attributeWidth`, since it is added element-wise to post-mixer token vectors which are `objectWidth`-sized), applied to the group index normalized by total number of groups. The metadata map (group name → offset, limit, modify, create) is computed once at build time.
+Concatenate in definition order for deterministic slicing. Instead of learned group embeddings, apply a fixed sinusoidal positional encoding based on the group index. All objects within the same group receive the same encoding value (their group index), so intra-group order is not imposed and set semantics are preserved. Objects from different groups receive different encoding values, giving the transformer a zero-parameter signal to distinguish groups. Create objects receive the same group-level encoding as the observe objects of their corresponding group, so the transformer can associate create objects with their group. The group-level encoding uses sin+cos pairs over `objectWidth` (not `attributeWidth`, since it is added element-wise to post-mixer object vectors which are `objectWidth`-sized), applied to the group index normalized by total number of groups. The metadata map (group name → offset, limit, modify, create) is computed once at build time.
 
 ---
 
@@ -171,8 +171,8 @@ src/
     layers/
       SinusoidalEncoding.js       # Attribute-local sinusoidal encoding
       GroupPositionalEncoding.js   # Fixed sinusoidal group-level positional encoding
-      CreateTokens.js             # Learned embeddings for create tokens
-      SliceTokens.js              # Slices a token range from the sequence dimension
+      CreateObjects.js            # Learned embeddings for create objects
+      SliceObjects.js             # Slices a group's objects from the sequence dimension
       GroupedQueryAttention.js    # Grouped Query Attention (reshape, scale, softmax)
       FinalLayerNorm.js           # Final layer normalization before output heads
 

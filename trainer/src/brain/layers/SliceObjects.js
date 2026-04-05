@@ -1,9 +1,9 @@
 import tf from "../tf.js";
 
-// Slices a range of tokens from the sequence dimension.
+// Slices a range of objects from the sequence dimension.
 // Config: { start, size }
-// Input: (batch, totalTokens, width) -> Output: (batch, size, width)
-export default class SliceTokens extends tf.layers.Layer {
+// Input: (batch, totalObjects, width) -> Output: (batch, size, width)
+export default class SliceObjects extends tf.layers.Layer {
   constructor(config) {
     super(config);
     this.start = config.start;
@@ -30,5 +30,5 @@ export default class SliceTokens extends tf.layers.Layer {
     return config;
   }
 
-  static get className() { return "SliceTokens"; }
+  static get className() { return "SliceObjects"; }
 }

@@ -41,7 +41,7 @@ Input Specification
 
 6. Config object fields:
 - attributeWidth: optional integer, per-attribute encoder width. Default is 128.
-- objectWidth: integer, object token width (dModel in transformer terminology).
+- objectWidth: integer, object width (dModel in transformer terminology).
 - brainWidth: optional integer, feed-forward network hidden layer width. Default is 4 × objectWidth.
 - brainLayers: integer, Transformer blocks.
 - attentionHeads: integer, attention heads.
@@ -83,12 +83,12 @@ Architecture Requirements
 - Project concatenated vector to objectWidth using a linear layer.
 
 4. Transformer Core:
-- Set-style Transformer operating on all object tokens across all groups.
+- Set-style Transformer operating on all objects across all groups.
 - No sequence-position encoding within a group (set semantics preserved).
-- Apply fixed sinusoidal group-level positional encoding: all tokens in the same group share the same encoding value (the group index), giving the transformer a zero-parameter signal to distinguish groups. Create tokens receive the same group-level encoding as the observe tokens of their corresponding group. The group-level encoding is added element-wise to each token's objectWidth-sized vector after the mixer stage.
-- Total objects equals the sum of each observe group limit plus create tokens from act groups.
-- Input shape to core: (batch, totalTokens, objectWidth).
-- Output shape from core: (batch, totalTokens, objectWidth).
+- Apply fixed sinusoidal group-level positional encoding: all objects in the same group share the same encoding value (the group index), giving the transformer a zero-parameter signal to distinguish groups. Create objects receive the same group-level encoding as the observe objects of their corresponding group. The group-level encoding is added element-wise to each object's objectWidth-sized vector after the mixer stage.
+- Total objects equals the sum of each observe group limit plus create objects from act groups.
+- Input shape to core: (batch, totalObjects, objectWidth).
+- Output shape from core: (batch, totalObjects, objectWidth).
 - Each transformer block uses pre-norm architecture:
   a. LayerNorm → Grouped Query Attention (GQA) → Dropout → Residual add.
   b. LayerNorm → Feed-Forward Network → Dropout → Residual add.
@@ -113,8 +113,8 @@ Architecture Requirements
 - For label: single linear layer with output size equal to number of options per object.
 
 Tensor Contract (Mandatory)
-1. Forward input covers observe data only, structured per observe group, per object, and per attribute. Each input tensor has shape (batch, limit) — always padded to the full group limit. Unfilled object slots use padding value 0 for all attribute types. Label indices are 1-based (first option = 1, second option = 2, etc.) so that 0 is unambiguously padding. The label embedding layer's inputDim must be options.length + 1 to accommodate the padding index. For example, in Tic-Tac-Toe when the game starts with 0 marks, all 9 object slots are padded with 0. Create tokens are learned embeddings injected internally and require no input data.
-2. Internal post-mixer tensor must be (batch, totalTokens, objectWidth) where totalTokens is the sum of all observe group limits plus all act group create values.
+1. Forward input covers observe data only, structured per observe group, per object, and per attribute. Each input tensor has shape (batch, limit) — always padded to the full group limit. Unfilled object slots use padding value 0 for all attribute types. Label indices are 1-based (first option = 1, second option = 2, etc.) so that 0 is unambiguously padding. The label embedding layer's inputDim must be options.length + 1 to accommodate the padding index. For example, in Tic-Tac-Toe when the game starts with 0 marks, all 9 object slots are padded with 0. Create objects are learned embeddings injected internally and require no input data.
+2. Internal post-mixer tensor must be (batch, totalObjects, objectWidth) where totalObjects is the sum of all observe group limits plus all act group create values.
 3. Forward output must be an object keyed by group name, then by act attribute name.
 4. The underlying tf.LayersModel must expose each act attribute as a separate named output so that per-output loss functions can be assigned during compile. Named outputs use the convention groupName_attributeName_out (e.g., "marks_row_out", "marks_col_out", "marks_player_out"). Named inputs use groupName_attributeName_in (e.g., "marks_row_in", "marks_col_in", "marks_player_in"). The _in/_out suffix disambiguates inputs from outputs while keeping the most significant parts (group and attribute) first for readability in model summaries.
 5. Each output tensor shape (where outputObjects = (modify ? limit : 0) + create):
@@ -131,7 +131,7 @@ Loss Function Strategy (Mandatory)
 5. The wrapper must build the loss mapping automatically from the skill definition.
 
 Prediction Semantics
-1. Both modify and create output heads predict the target state of objects. Modify heads apply to the observed objects in the group; create heads apply to newly created objects. The output heads are identical in structure — the distinction is only which transformer tokens they read from.
+1. Both modify and create output heads predict the target state of objects. Modify heads apply to the observed objects in the group; create heads apply to newly created objects. The output heads are identical in structure — the distinction is only which transformer objects they read from.
 
 2. Continuous attributes (space, scalar):
 - For modify outputs: model predicts delta values. Next value is current value plus predicted delta.
@@ -180,8 +180,8 @@ Deliverables
 1. `brain/tf.js` — Polyfill wrapper for Node.js 23+ compatibility.
 2. `brain/layers/SinusoidalEncoding.js` — Attribute-local sinusoidal encoding layer.
 3. `brain/layers/GroupPositionalEncoding.js` — Fixed sinusoidal group-level positional encoding layer.
-4. `brain/layers/CreateTokens.js` — Learned embeddings for create tokens.
-5. `brain/layers/SliceTokens.js` — Slices a token range from the sequence dimension.
+4. `brain/layers/CreateObjects.js` — Learned embeddings for create objects.
+5. `brain/layers/SliceObjects.js` — Slices a group's objects from the sequence dimension.
 6. `brain/layers/GroupedQueryAttention.js` — Grouped Query Attention layer (reshape, scale, softmax).
 7. `brain/layers/FinalLayerNorm.js` — Final layer normalization before output heads.
 8. `brain/ops/register.js` — Imports all layer classes and registers them with `tf.serialization.registerClass()`.

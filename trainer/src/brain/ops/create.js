@@ -1,8 +1,8 @@
 import tf from "../tf.js";
 import SinusoidalEncoding from "../layers/SinusoidalEncoding.js";
 import GroupPositionalEncoding from "../layers/GroupPositionalEncoding.js";
-import CreateTokens from "../layers/CreateTokens.js";
-import SliceTokens from "../layers/SliceTokens.js";
+import CreateObjects from "../layers/CreateObjects.js";
+import SliceObjects from "../layers/SliceObjects.js";
 import GroupedQueryAttention from "../layers/GroupedQueryAttention.js";
 import FinalLayerNorm from "../layers/FinalLayerNorm.js";
 
@@ -140,7 +140,7 @@ export function computeMetadata(skill, config) {
   const brainWidth = config.brainWidth || 4 * objectWidth;
 
   const groups = [];
-  let tokenOffset = 0;
+  let objectOffset = 0;
   const groupAssignments = [];
 
   const observeGroupNames = Object.keys(skill.observe);
@@ -173,34 +173,34 @@ export function computeMetadata(skill, config) {
       limit,
       modify,
       create,
-      observeOffset: tokenOffset,
+      observeOffset: objectOffset,
       observeAttrs,
       actAttrs,
       outputObjects,
     };
 
-    // Observe tokens
+    // Observe objects
     for (let t = 0; t < limit; t++) {
       groupAssignments.push(gi);
     }
-    tokenOffset += limit;
+    objectOffset += limit;
 
     groups.push(groupMeta);
   }
 
-  // Second pass: assign create token offsets
+  // Second pass: assign create object offsets
   for (const group of groups) {
     if (group.create > 0) {
-      group.createOffset = tokenOffset;
+      group.createOffset = objectOffset;
       for (let t = 0; t < group.create; t++) {
         groupAssignments.push(group.groupIndex);
       }
-      tokenOffset += group.create;
+      objectOffset += group.create;
     }
   }
 
-  const totalTokens = tokenOffset;
-  const totalCreateTokens = groups.reduce((sum, g) => sum + g.create, 0);
+  const totalObjects = objectOffset;
+  const totalCreateObjects = groups.reduce((sum, g) => sum + g.create, 0);
 
   return {
     attributeWidth,
@@ -208,8 +208,8 @@ export function computeMetadata(skill, config) {
     brainWidth,
     groups,
     groupAssignments,
-    totalTokens,
-    totalCreateTokens,
+    totalObjects,
+    totalCreateObjects,
     numGroups: observeGroupNames.length,
   };
 }
@@ -324,34 +324,34 @@ function buildOutputHead(groupMeta, attr, objectWidth, transformerOutput) {
   const outputName = `${groupMeta.name}_${attr.name}_out`;
   const outputObjects = groupMeta.outputObjects;
 
-  // Collect tokens for this output head
-  const tokenSlices = [];
+  // Collect objects for this output head
+  const objectSlices = [];
 
   if (groupMeta.modify) {
-    // Slice observe tokens
-    const observeSlice = new SliceTokens({
+    // Slice observe objects
+    const observeSlice = new SliceObjects({
       start: groupMeta.observeOffset,
       size: groupMeta.limit,
       name: `${groupMeta.name}_${attr.name}_modify_slice`,
     }).apply(transformerOutput);
-    tokenSlices.push(observeSlice);
+    objectSlices.push(observeSlice);
   }
 
   if (groupMeta.create > 0) {
-    // Slice create tokens
-    const createSlice = new SliceTokens({
+    // Slice create objects
+    const createSlice = new SliceObjects({
       start: groupMeta.createOffset,
       size: groupMeta.create,
       name: `${groupMeta.name}_${attr.name}_create_slice`,
     }).apply(transformerOutput);
-    tokenSlices.push(createSlice);
+    objectSlices.push(createSlice);
   }
 
-  let tokens;
-  if (tokenSlices.length === 1) {
-    tokens = tokenSlices[0];
+  let objects;
+  if (objectSlices.length === 1) {
+    objects = objectSlices[0];
   } else {
-    tokens = tf.layers.concatenate({ axis: 1, name: `${groupMeta.name}_${attr.name}_cat` }).apply(tokenSlices);
+    objects = tf.layers.concatenate({ axis: 1, name: `${groupMeta.name}_${attr.name}_cat` }).apply(objectSlices);
   }
 
   // Output head: single dense layer
@@ -360,7 +360,7 @@ function buildOutputHead(groupMeta, attr, objectWidth, transformerOutput) {
       units: 1,
       name: outputName,
       useBias: true,
-    }).apply(tokens);
+    }).apply(objects);
   } else {
     // label: output probabilities over options
     return tf.layers.dense({
@@ -368,7 +368,7 @@ function buildOutputHead(groupMeta, attr, objectWidth, transformerOutput) {
       activation: "softmax",
       name: outputName,
       useBias: true,
-    }).apply(tokens);
+    }).apply(objects);
   }
 }
 
@@ -376,7 +376,7 @@ export function build(skill, config) {
   validate(skill, config);
 
   const meta = computeMetadata(skill, config);
-  const { attributeWidth, objectWidth, brainWidth, groups, groupAssignments, totalTokens, totalCreateTokens, numGroups } = meta;
+  const { attributeWidth, objectWidth, brainWidth, groups, groupAssignments, totalObjects, totalCreateObjects, numGroups } = meta;
 
   const allInputs = [];
   const mixedGroups = [];
@@ -394,49 +394,49 @@ export function build(skill, config) {
     mixedGroups.push(mixed);
   }
 
-  // Build create tokens if needed
-  let createTokensTensor = null;
+  // Build create objects if needed
+  let createObjectsTensor = null;
   let batchRefTensor = mixedGroups[0]; // reference for batch size
 
-  if (totalCreateTokens > 0) {
-    createTokensTensor = new CreateTokens({
-      numTokens: totalCreateTokens,
+  if (totalCreateObjects > 0) {
+    createObjectsTensor = new CreateObjects({
+      numObjects: totalCreateObjects,
       objectWidth,
-      name: "create_tokens",
+      name: "create_objects",
     }).apply(batchRefTensor);
   }
 
-  // Concatenate all tokens: observe groups + create tokens
-  const tokenParts = [...mixedGroups];
-  if (createTokensTensor) {
-    tokenParts.push(createTokensTensor);
+  // Concatenate all objects: observe groups + create objects
+  const objectParts = [...mixedGroups];
+  if (createObjectsTensor) {
+    objectParts.push(createObjectsTensor);
   }
 
-  let allTokens;
-  if (tokenParts.length === 1) {
-    allTokens = tokenParts[0];
+  let allObjects;
+  if (objectParts.length === 1) {
+    allObjects = objectParts[0];
   } else {
-    allTokens = tf.layers.concatenate({ axis: 1, name: "token_concat" }).apply(tokenParts);
+    allObjects = tf.layers.concatenate({ axis: 1, name: "object_concat" }).apply(objectParts);
   }
 
   // Apply group-level positional encoding
-  allTokens = new GroupPositionalEncoding({
+  allObjects = new GroupPositionalEncoding({
     objectWidth,
     groupAssignments,
     numGroups,
     name: "group_pe",
-  }).apply(allTokens);
+  }).apply(allObjects);
 
   // Stack transformer blocks using standard functional API layers
   for (let i = 0; i < config.brainLayers; i++) {
-    allTokens = buildTransformerBlock(allTokens, i, objectWidth, brainWidth, config);
+    allObjects = buildTransformerBlock(allObjects, i, objectWidth, brainWidth, config);
   }
 
   // Final layer norm
-  allTokens = new FinalLayerNorm({
+  allObjects = new FinalLayerNorm({
     width: objectWidth,
     name: "final_ln",
-  }).apply(allTokens);
+  }).apply(allObjects);
 
   // Build output heads
   const outputList = [];
@@ -446,7 +446,7 @@ export function build(skill, config) {
 
     for (const attr of group.actAttrs) {
       const outputName = `${group.name}_${attr.name}_out`;
-      outputList.push(buildOutputHead(group, attr, objectWidth, allTokens));
+      outputList.push(buildOutputHead(group, attr, objectWidth, allObjects));
       outputNames.push(outputName);
     }
   }

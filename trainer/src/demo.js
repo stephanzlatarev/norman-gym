@@ -63,7 +63,7 @@ async function main() {
   };
 
   let brain = new Brain(skillYaml, config);
-  brain.compile();
+  brain.init();
   brain.summary();
 
   console.log("\n--- Training ---");
@@ -113,12 +113,12 @@ async function main() {
     losses.forEach(t => t.dispose());
 
     console.log("\nSaving model...");
-    await brain.save("file://" + saveFolder, { includeOptimizer: true });
+    await brain.save(saveFolder);
     console.log("Saved to", saveFolder);
 
     console.log("\nLoading model...");
-    const loaded = await Brain.load("file://" + saveFolder + "/model.json", skillYaml, config);
-    loaded.compile();
+    brain = new Brain(skillYaml, config);
+    await brain.load(saveFolder);
   }
 
   // Cleanup

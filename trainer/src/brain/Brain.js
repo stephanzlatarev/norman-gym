@@ -2,6 +2,7 @@ import tf from "./tf.js";
 import build from "./ops/build.js";
 import validate from "./ops/validate.js";
 import computeMetadata from "./ops/meta.js";
+import { saveModel, loadModel } from "./ops/persist.js";
 import "./ops/register.js";
 
 const OPTIMIZER = "adam";
@@ -9,22 +10,30 @@ const OPTIMIZER = "adam";
 export default class Brain {
 
   constructor(skill, config) {
+    validate(skill, config);
+
     this.skill = skill;
     this.config = config;
-
-    const { model, meta } = build(skill, config);
-    this.model = model;
-    this.meta = meta;
+    this.meta = computeMetadata(skill, config);
   }
 
-  compile(optimizer, lossWeights) {
-    this.model.compile({
-      optimizer: optimizer || OPTIMIZER,
-      loss: this.meta.lossMap,
-      lossWeights: lossWeights || undefined,
-    });
+  init() {
+    const { model } = build(this.skill, this.config);
+    this.model = model;
 
-    this.fit = this.model.makeTrainFunction();
+    compile(this);
+  }
+
+  async load(folder) {
+    const model = await loadModel(folder);
+
+    if (model) {
+      this.model = model;
+
+      compile(this);
+    }
+
+    return !!model;
   }
 
   predict(input) {
@@ -55,23 +64,8 @@ export default class Brain {
     tf.engine().endScope();
   }
 
-  async save(path, options) {
-    await this.model.save(path, options);
-  }
-
-  static async load(path, skill, config) {
-    validate(skill, config);
-
-    const brain = Object.create(Brain.prototype);
-    brain.skill = skill;
-    brain.config = config;
-
-    const meta = computeMetadata(skill, config);
-    brain.meta = meta;
-
-    brain.model = await tf.loadLayersModel(path);
-
-    return brain;
+  async save(folder) {
+    await saveModel(this.model, folder);
   }
 
   summary() {
@@ -200,4 +194,14 @@ export default class Brain {
 
     return result;
   }
+}
+
+function compile(brain) {
+  brain.model.compile({
+    optimizer: OPTIMIZER,
+    loss: brain.meta.lossMap,
+    lossWeights: undefined,
+  });
+
+  brain.fit = brain.model.makeTrainFunction();
 }

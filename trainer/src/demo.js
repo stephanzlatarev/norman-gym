@@ -67,36 +67,10 @@ async function main() {
   brain.summary();
 
   console.log("\n--- Training ---");
-  for (let i = 0, epochs = 0; i <= 10; i++) {
+  for (let i = 0; i <= 10; i++) {
 
     // Train for 10 seconds
-    if (i > 0) {
-      const start = Date.now();
-
-      while (Date.now() - start < 10000) {
-        await brain.model.fit(brain._flattenInput(input), brain._flattenTargets(target), {
-          epochs: 1,
-          batchSize: 1,
-          verbose: 0,
-        });
-        epochs++;
-      }
-    }
-
-    // Measure loss
-    const lossResult = await brain.model.evaluate(brain._flattenInput(input), brain._flattenTargets(target), { batchSize: 1 });
-    const losses = Array.isArray(lossResult) ? lossResult : [lossResult];
-    const totalLoss = await losses[0].data();
-
-    // Predict
-    const pred = brain.predict(input);
-    const row = (await pred.marks.row.data())[0];
-    const col = (await pred.marks.col.data())[0];
-    const playerLogits = await pred.marks.player.data();
-    const playerIdx = playerLogits[0] > playerLogits[1] ? 0 : 1;
-    const playerLabel = ["X", "O"][playerIdx];
-
-    console.log(`Iteration ${i}: ${epochs} epochs, loss=${totalLoss[0].toFixed(6)}, predicted row=${row.toFixed(2)} col=${col.toFixed(2)} player=(${playerLogits[0].toFixed(2)}, ${playerLogits[1].toFixed(2)}) -> ${playerLabel}`);
+    const loss = brain.train(input, target, 10);
 
     // Decide test
     const act = brain.decide({
@@ -107,10 +81,8 @@ async function main() {
         [3, 1, "O"],
       ]
     });
-    console.log("  decide:", JSON.stringify(act));
 
-    // Dispose intermediate tensors
-    losses.forEach(t => t.dispose());
+    console.log(`Iteration ${i}: loss=${loss.toFixed(6)} | act=${JSON.stringify(act)}`);
 
     console.log("\nSaving model...");
     await brain.save(saveFolder);

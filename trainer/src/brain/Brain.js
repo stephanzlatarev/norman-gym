@@ -3,7 +3,7 @@ import build from "./ops/build.js";
 import validate from "./ops/validate.js";
 import computeMetadata from "./ops/meta.js";
 import { saveModel, loadModel } from "./ops/persist.js";
-import { encodeObservation, decodeAction, flattenInput, flattenTargets, groupOutput } from "./ops/translate.js";
+import { encodeObservation, encodeAction, decodeAction, flattenInput, groupOutput } from "./ops/translate.js";
 import "./ops/register.js";
 
 const OPTIMIZER = "adam";
@@ -47,11 +47,12 @@ export default class Brain {
     });
   }
 
-  train(inputData, targetData, seconds) {
+  train(observation, action, seconds) {
     tf.engine().startScope();
 
-    const flatInputs = flattenInput(this.meta, inputData);
-    const flatTargets = flattenTargets(this.meta, this.skill, targetData);
+    const input = encodeObservation(this.meta, this.skill, observation);
+    const flatInputs = flattenInput(this.meta, input);
+    const flatTargets = encodeAction(this.meta, this.skill, action);
     const data = [...flatInputs, ...flatTargets];
 
     let loss;

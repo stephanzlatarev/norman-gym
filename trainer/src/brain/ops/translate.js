@@ -32,6 +32,42 @@ export function encodeObservation(meta, skill, observation) {
   return input;
 }
 
+export function encodeAction(meta, skill, action) {
+  const targets = [];
+
+  for (const group of meta.groups) {
+    if (!skill.act[group.name]) continue;
+
+    const tuples = action[group.name] || [];
+
+    for (const attr of group.actAttrs) {
+      const ai = group.actAttrs.indexOf(attr);
+
+      if (attr.type === "label") {
+        const numOptions = attr.options.length;
+        const oneHot = [];
+        for (let i = 0; i < group.outputObjects; i++) {
+          const row = new Array(numOptions).fill(0);
+          if (i < tuples.length) {
+            const idx = attr.options.indexOf(tuples[i][ai]);
+            if (idx >= 0) row[idx] = 1;
+          }
+          oneHot.push(row);
+        }
+        targets.push(tf.tensor3d([oneHot], [1, group.outputObjects, numOptions]));
+      } else {
+        const values = [];
+        for (let i = 0; i < group.outputObjects; i++) {
+          values.push(i < tuples.length ? tuples[i][ai] : 0);
+        }
+        targets.push(tf.tensor3d([values.map(v => [v])], [1, group.outputObjects, 1]));
+      }
+    }
+  }
+
+  return targets;
+}
+
 export function decodeAction(meta, skill, pred) {
   const result = {};
 

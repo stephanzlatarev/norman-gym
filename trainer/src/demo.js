@@ -16,6 +16,7 @@ const config = {
   attentionHeads: 8,
   attentionGroups: 2,
   dropoutRate: 0.1,
+  batchSize: 100,
 };
 
 async function loadPlaybooks() {
@@ -45,7 +46,7 @@ async function main() {
   console.log("\n--- Training ---");
   for (let i = 0; i <= 10; i++) {
 
-    const samples = createSamples(playbooks, 100);
+    const samples = createSamples(playbooks, config.batchSize);
 
     // Train for 10 seconds
     const loss = brain.train(samples, 10);

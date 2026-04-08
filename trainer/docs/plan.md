@@ -47,6 +47,7 @@ Input Specification
 - attentionHeads: integer, attention heads.
 - attentionGroups: integer, number of key/value groups for Grouped Query Attention. Must divide attentionHeads evenly.
 - dropoutRate: number in [0, 1].
+- batchSize: integer, maximum batch size based on hardware capacity.
 
 Validation Rules (Mandatory)
 1. Throw clear errors for invalid input.
@@ -251,4 +252,5 @@ brainLayers: 4
 attentionHeads: 8
 attentionGroups: 2
 dropoutRate: 0.1
+batchSize: 100
 ```

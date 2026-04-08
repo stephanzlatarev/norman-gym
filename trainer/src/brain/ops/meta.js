@@ -18,15 +18,15 @@ export default function computeMetadata(skill, config) {
     const modify = actGroup ? actGroup.modify : false;
     const create = actGroup ? actGroup.create : 0;
 
-    const observeAttrs = observeGroup.attributes.map(attr => {
+    const observeAttributes = observeGroup.attributes.map(attr => {
       const base = { name: attr.name, type: attr.type };
       if (attr.type === "space" || attr.type === "scalar") base.range = attr.range;
       if (attr.type === "label") base.options = attr.options;
       return base;
     });
 
-    const actAttrs = actGroup ? actGroup.attributes.map(actAttr => {
-      return observeAttrs.find(a => a.name === actAttr.name);
+    const actAttributes = actGroup ? actGroup.attributes.map(attribute => {
+      return observeAttributes.find(a => a.name === attribute.name);
     }) : [];
 
     const outputObjects = (modify ? limit : 0) + create;
@@ -38,8 +38,8 @@ export default function computeMetadata(skill, config) {
       modify,
       create,
       observeOffset: objectOffset,
-      observeAttrs,
-      actAttrs,
+      observeAttributes,
+      actAttributes,
       outputObjects,
     };
 
@@ -71,7 +71,7 @@ export default function computeMetadata(skill, config) {
   const outputNames = [];
   for (const group of groups) {
     if (!skill.act[group.name]) continue;
-    for (const attr of group.actAttrs) {
+    for (const attr of group.actAttributes) {
       const outputName = `${group.name}_${attr.name}_out`;
       lossMap[outputName] = (attr.type === "label") ? "categoricalCrossentropy" : "meanSquaredError";
       outputNames.push(outputName);

@@ -104,10 +104,10 @@ function validateSkill(skill) {
     if (!Array.isArray(group.attributes) || group.attributes.length === 0)
       errors.push(`Act group "${groupName}": attributes must be a non-empty array.`);
     else if (groupName in skill.observe) {
-      const observeAttrNames = new Set(skill.observe[groupName].attributes.map(a => a.name));
-      for (const actAttr of group.attributes) {
-        if (!observeAttrNames.has(actAttr.name))
-          errors.push(`Act group "${groupName}", attribute "${actAttr.name}": must match an attribute in observe group "${groupName}".`);
+      const observeAttributesNames = new Set(skill.observe[groupName].attributes.map(a => a.name));
+      for (const attribute of group.attributes) {
+        if (!observeAttributesNames.has(attribute.name))
+          errors.push(`Act group "${groupName}", attribute "${attribute.name}": must match an attribute in observe group "${groupName}".`);
       }
     }
   }

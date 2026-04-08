@@ -37,20 +37,41 @@ const config = {
   dropoutRate: 0.1,
 };
 
-const observation = {
-  marks: [
-    [1, 1, "X"],
-    [1, 2, "O"],
-    [2, 2, "X"],
-    [3, 1, "O"],
-  ],
-};
+const samples = [
 
-const action = {
-  marks: [
-    [3, 3, "X"],
-  ],
-};
+  {
+    observe: {
+      marks: [
+        [1, 1, "X"],
+        [1, 2, "O"],
+        [2, 2, "X"],
+        [3, 1, "O"],
+      ],
+    },
+    act: {
+      marks: [
+        [3, 3, "X"],
+      ],
+    }
+  },
+  
+  {
+    observe: {
+      marks: [
+        [1, 1, "O"],
+        [1, 2, "X"],
+        [2, 2, "O"],
+        [3, 1, "X"],
+      ],
+    },
+    act: {
+      marks: [
+        [3, 3, "O"],
+      ],
+    }
+  },
+
+];
 
 async function main() {
   console.log("Building Tic-Tac-Toe Brain...\n");
@@ -66,10 +87,10 @@ async function main() {
   for (let i = 0; i <= 10; i++) {
 
     // Train for 10 seconds
-    const loss = brain.train(observation, action, 10);
+    const loss = brain.train(samples, 10);
 
     // Decide test
-    const act = brain.decide(observation);
+    const act = samples.map(sample => brain.decide(sample.observe));
 
     console.log(`Iteration ${i}: loss=${loss.toFixed(6)} | act=${JSON.stringify(act)}`);
 

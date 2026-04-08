@@ -7,8 +7,8 @@ export function encodeObservation(meta, skill, observation) {
     const objects = observation[group.name] || [];
     input[group.name] = {};
 
-    for (let ai = 0; ai < group.observeAttrs.length; ai++) {
-      const attr = group.observeAttrs[ai];
+    for (let ai = 0; ai < group.observeAttributes.length; ai++) {
+      const attr = group.observeAttributes[ai];
       const values = [];
 
       for (let i = 0; i < group.limit; i++) {
@@ -40,8 +40,8 @@ export function encodeAction(meta, skill, action) {
 
     const tuples = action[group.name] || [];
 
-    for (const attr of group.actAttrs) {
-      const ai = group.actAttrs.indexOf(attr);
+    for (const attr of group.actAttributes) {
+      const ai = group.actAttributes.indexOf(attr);
 
       if (attr.type === "label") {
         const numOptions = attr.options.length;
@@ -68,6 +68,30 @@ export function encodeAction(meta, skill, action) {
   return targets;
 }
 
+export function encodeBatch(meta, skill, samples) {
+  const inputArrays = [];
+  const targetArrays = [];
+
+  for (const sample of samples) {
+    const input = encodeObservation(meta, skill, sample.observe);
+    inputArrays.push(flattenInput(meta, input));
+    targetArrays.push(encodeAction(meta, skill, sample.act));
+  }
+
+  const flatInputs = inputArrays[0].map((_, i) =>
+    tf.concat(inputArrays.map(a => a[i]), 0)
+  );
+  const flatTargets = targetArrays[0].map((_, i) =>
+    tf.concat(targetArrays.map(a => a[i]), 0)
+  );
+
+  // Dispose per-sample tensors
+  for (const arr of inputArrays) arr.forEach(t => t.dispose());
+  for (const arr of targetArrays) arr.forEach(t => t.dispose());
+
+  return [...flatInputs, ...flatTargets];
+}
+
 export function decodeAction(meta, skill, pred) {
   const result = {};
 
@@ -75,14 +99,14 @@ export function decodeAction(meta, skill, pred) {
     if (!skill.act[group.name]) continue;
 
     const attrData = {};
-    for (const attr of group.actAttrs) {
+    for (const attr of group.actAttributes) {
       attrData[attr.name] = pred[group.name][attr.name].dataSync();
     }
 
     const tuples = [];
     for (let i = 0; i < group.outputObjects; i++) {
       const tuple = [];
-      for (const attr of group.actAttrs) {
+      for (const attr of group.actAttributes) {
         if (attr.type === "label") {
           const numOptions = attr.options.length;
           const offset = i * numOptions;
@@ -109,7 +133,7 @@ export function decodeAction(meta, skill, pred) {
 export function flattenInput(meta, input) {
   const flatInputs = [];
   for (const group of meta.groups) {
-    for (const attr of group.observeAttrs) {
+    for (const attr of group.observeAttributes) {
       flatInputs.push(input[group.name][attr.name]);
     }
   }
@@ -120,7 +144,7 @@ export function flattenTargets(meta, skill, targets) {
   const flatTargets = [];
   for (const group of meta.groups) {
     if (!skill.act[group.name]) continue;
-    for (const attr of group.actAttrs) {
+    for (const attr of group.actAttributes) {
       const outputName = `${group.name}_${attr.name}_out`;
       let tensor;
       if (targets[outputName]) {
@@ -145,7 +169,7 @@ export function groupOutput(meta, skill, flatOutputs) {
   for (const group of meta.groups) {
     if (!skill.act[group.name]) continue;
     result[group.name] = {};
-    for (const attr of group.actAttrs) {
+    for (const attr of group.actAttributes) {
       result[group.name][attr.name] = outputArray[idx++];
     }
   }

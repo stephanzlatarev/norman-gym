@@ -179,7 +179,7 @@ export default function build(skill, config) {
   for (const group of groups) {
     const encodedAttrs = [];
 
-    for (const attr of group.observeAttrs) {
+    for (const attr of group.observeAttributes) {
       const { input, encoded } = buildEncoderForAttribute(attr, attributeWidth, group.name, group.limit, allInputs);
       encodedAttrs.push(encoded);
     }
@@ -237,7 +237,7 @@ export default function build(skill, config) {
   for (const group of groups) {
     if (!skill.act[group.name]) continue;
 
-    for (const attr of group.actAttrs) {
+    for (const attr of group.actAttributes) {
       outputList.push(buildOutputHead(group, attr, objectWidth, allObjects));
     }
   }

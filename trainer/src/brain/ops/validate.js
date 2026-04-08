@@ -72,17 +72,22 @@ function validateSkill(skill) {
           errors.push(`Observe group "${groupName}": duplicate attribute name "${attr.name}".`);
         attrNames.add(attr.name);
 
-        if (!["space", "scalar", "label"].includes(attr.type))
+        if (attr.type && !["space", "scalar", "label"].includes(attr.type))
           errors.push(`Observe group "${groupName}", attribute "${attr.name}": type must be one of space, scalar, label.`);
 
-        if (attr.type === "space" || attr.type === "scalar") {
+        const resolvedType = attr.type || (attr.options ? "label" : attr.range ? "scalar" : undefined);
+
+        if (!resolvedType)
+          errors.push(`Observe group "${groupName}", attribute "${attr.name}": must have type, options, or range.`);
+
+        if (resolvedType === "space" || resolvedType === "scalar") {
           if (!Array.isArray(attr.range) || attr.range.length !== 2)
             errors.push(`Observe group "${groupName}", attribute "${attr.name}": range must be [min, max].`);
           else if (attr.range[0] >= attr.range[1])
             errors.push(`Observe group "${groupName}", attribute "${attr.name}": range min must be less than max.`);
         }
 
-        if (attr.type === "label") {
+        if (resolvedType === "label") {
           if (!Array.isArray(attr.options) || attr.options.length < 2)
             errors.push(`Observe group "${groupName}", attribute "${attr.name}": options must have at least 2 entries.`);
         }

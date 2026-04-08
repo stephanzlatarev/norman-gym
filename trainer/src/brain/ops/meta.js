@@ -19,9 +19,10 @@ export default function computeMetadata(skill, config) {
     const create = actGroup ? actGroup.create : 0;
 
     const observeAttributes = observeGroup.attributes.map(attr => {
-      const base = { name: attr.name, type: attr.type };
-      if (attr.type === "space" || attr.type === "scalar") base.range = attr.range;
-      if (attr.type === "label") base.options = attr.options;
+      const type = attr.type || (attr.options ? "label" : attr.range ? "scalar" : undefined);
+      const base = { name: attr.name, type };
+      if (type === "space" || type === "scalar") base.range = attr.range;
+      if (type === "label") base.options = attr.options;
       return base;
     });
 

@@ -15,7 +15,7 @@ export default function computeMetadata(skill, config) {
     const actGroup = skill.act[groupName];
 
     const limit = observeGroup.limit;
-    const modify = actGroup ? actGroup.modify : false;
+    const modify = !!(actGroup && (actGroup.modify !== false));
     const create = actGroup ? actGroup.create : 0;
 
     const observeAttributes = observeGroup.attributes.map(attr => {

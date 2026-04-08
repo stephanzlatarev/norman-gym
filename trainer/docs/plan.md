@@ -34,6 +34,7 @@ Input Specification
 - modify: boolean, whether the brain modifies the observed objects in this group.
 - create: non-negative integer, number of new objects the brain creates in this group.
 - At least one of modify or create must be active (modify true or create > 0).
+- Default is modify true and create = 0.
 - attributes: non-empty array of attribute references.
 
 5. Act attribute reference:

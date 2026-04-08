@@ -1,31 +1,12 @@
 import fs from "fs";
+import path from "path";
+import { pathToFileURL } from "url";
+import YAML from "yaml";
 import Brain from "./brain/Brain.js";
+import createSamples from "./brain/ops/samples.js";
 
-// Load the skill yaml as a JS object
-const skill = {
-  name: "Play Tic-Tac-Toe",
-  observe: {
-    marks: {
-      limit: 9,
-      attributes: [
-        { name: "row", type: "space", range: [1, 3] },
-        { name: "col", type: "space", range: [1, 3] },
-        { name: "player", type: "label", options: ["X", "O"] },
-      ],
-    },
-  },
-  act: {
-    marks: {
-      modify: false,
-      create: 1,
-      attributes: [
-        { name: "row" },
-        { name: "col" },
-        { name: "player" },
-      ],
-    },
-  },
-};
+const skillFolder = "docs/example/skill/tic-tac-toe";
+const skill = YAML.parse(fs.readFileSync(path.join(skillFolder, "skill.yaml"), "utf8"));
 
 const config = {
   attributeWidth: 64,
@@ -37,47 +18,25 @@ const config = {
   dropoutRate: 0.1,
 };
 
-const samples = [
+async function loadPlaybooks() {
+  const playbooks = {};
 
-  {
-    observe: {
-      marks: [
-        [1, 1, "X"],
-        [1, 2, "O"],
-        [2, 2, "X"],
-        [3, 1, "O"],
-      ],
-    },
-    act: {
-      marks: [
-        [3, 3, "X"],
-      ],
-    }
-  },
-  
-  {
-    observe: {
-      marks: [
-        [1, 1, "O"],
-        [1, 2, "X"],
-        [2, 2, "O"],
-        [3, 1, "X"],
-      ],
-    },
-    act: {
-      marks: [
-        [3, 3, "O"],
-      ],
-    }
-  },
+  for (const [name, script] of Object.entries(skill.playbooks)) {
+    const modulePath = pathToFileURL(path.resolve(skillFolder, script)).href;
+    const mod = await import(modulePath);
+    playbooks[name] = mod.default;
+  }
 
-];
+  return playbooks;
+}
 
 async function main() {
   console.log("Building Tic-Tac-Toe Brain...\n");
 
   const saveFolder = process.cwd() + "/test_save";
   if (!fs.existsSync(saveFolder)) fs.mkdirSync(saveFolder, { recursive: true });
+
+  const playbooks = await loadPlaybooks();
 
   let brain = new Brain(skill, config);
   brain.init();
@@ -86,11 +45,13 @@ async function main() {
   console.log("\n--- Training ---");
   for (let i = 0; i <= 10; i++) {
 
+    const samples = createSamples(playbooks, 100);
+
     // Train for 10 seconds
     const loss = brain.train(samples, 10);
 
     // Decide test
-    const act = samples.map(sample => brain.decide(sample.observe));
+    const act = samples.slice(0, 3).map(sample => brain.decide(sample.observe));
 
     console.log(`Iteration ${i}: loss=${loss.toFixed(6)} | act=${JSON.stringify(act)}`);
 

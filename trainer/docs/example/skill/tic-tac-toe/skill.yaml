@@ -39,25 +39,7 @@ act:
       - name: player
 
 playbooks:
-
-  open:
-
-    - input: []                   # When this is the start of the game
-      output: [ [2, 2, "X"] ]     # Then take the center
-
-    - input: [ [2, 2, "X"] ]      # When opponent opened by taking the center
-      output: [ [1, 1, "O"] ]     # Then respond by taking the top-left corner
-
-    - input: [ [2, 2, "O"] ]      # When opponent opened by taking the center
-      output: [ [1, 1, "X"] ]     # Then respond by taking the top-left corner
-
-    - script: playbook-open.js    # Take the center on other opening by the opponent
-
-  fork:
-    - script: playbook-fork.js
-
-  block:
-    - script: playbook-block.js
-
-  win:
-    - script: playbook-win.js
+  open: playbook-open.js
+  fork: playbook-fork.js
+  block: playbook-block.js
+  win: playbook-win.js

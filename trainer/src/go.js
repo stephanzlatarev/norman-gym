@@ -1,224 +1,96 @@
-import Brain from "./Brain.js";
-import Playbook from "./Playbook.js";
-import { readStatus, updateStatus } from "./mongo.js";
+import Brain from "./brain/Brain.js";
+import createSamples from "./brain/ops/samples.js";
+import loadSkill from "./git.js";
+import { readAssignment, writeProgress, loadBrain, saveBrain } from "./mongo.js";
 import resources from "./resources.js";
-import { bestShape } from "./shape.js";
 
-const BRAIN_NAME = process.env.HOSTNAME || "brain";
-const EPOCH_SIZE = 60000;
-const BATCH_SIZE = 10000;
+const TRAINER_NAME = process.env.HOSTNAME;
+const SESSION_SECONDS = 60;
+const SESSION_MILLIS = SESSION_SECONDS * 1000;
+const MEASURE_BATCH_SIZE = 1000;
+const STORE_FOLDER = process.cwd();
 
 let skill;
-let playbook;
+let config;
 let brain;
-let batch;
-let fixture;
-let threshold;
 let record;
-let control;
-let time;
-let epochs;
 
 async function go() {
-  let status = await readStatus(BRAIN_NAME);
-
   while (true) {
-    if (hasAssignment(status)) {
-      await openEpoch(status);
+    const assignment = await readAssignment(TRAINER_NAME);
 
-      const resourceEfficiency = train();
+    if (assignment) {
+      await startSession(assignment);
 
-      time = Date.now();
-      status = await readStatus(BRAIN_NAME);
+      brain.train(createSamples(skill.playbooks, config.batchSize), SESSION_SECONDS);
 
-      if (hasAssignmentChanged(status)) {
-        await updateStatus(BRAIN_NAME, {});
-        clearAssignmentMetrics();
-      } else {
-        await closeEpoch(resourceEfficiency);
+      const loss = measure();
+
+      if (loss.overall < record.overall) {
+        await brain.save(STORE_FOLDER);
+        await saveBrain(assignment.brain, STORE_FOLDER, skill.url, loss.overall);
+
+        record = loss;
       }
+
+      await writeProgress(TRAINER_NAME, { loss, ...resources() });
     } else {
-      await skipEpoch();
-      clearAssignmentMetrics();
+      await new Promise(resolve => setTimeout(resolve, SESSION_MILLIS));
+      await writeProgress(TRAINER_NAME, resources());
     }
   }
 }
 
-function clearAssignmentMetrics() {
-  time = 0;
-  epochs = 0;
-  fixture = null;
-  threshold = Infinity;
-}
-
-function hasAssignment(status) {
-  return (status && status.skill);
-}
-
-function hasAssignmentChanged(status) {
-  if (!status) return true;
-  if (status.skill && (skill !== status.skill)) return true;
-  if (status.shape && (brain.shape !== status.shape)) return true;
-
-  return false;
-}
-
-async function skipEpoch() {
-  await new Promise(resolve => setTimeout(resolve, EPOCH_SIZE));
-}
-
-async function openEpoch(status) {
-  // Ensure the playbook is loaded
-  if (!playbook || (skill !== status.skill)) {
-    skill = status.skill;
+async function startSession(assignment) {
+  // Ensure the skill and config are loaded
+  if (!skill || (skill.url !== assignment.skill)) {
+    skill = await loadSkill(assignment.skill);
+    config = assignment.config;
     brain = null;
     record = null;
 
-    playbook = new Playbook(skill);
-    await playbook.load();
+    console.log("Skill:", JSON.stringify(skill));
+    console.log("Config:", JSON.stringify(config));
   }
 
   // Ensure the brain is up-to-date
-  if (!brain || (status.time > brain.timestamp)) {
-    brain = new Brain(BRAIN_NAME, playbook.meta.skill, playbook.meta.shape, playbook.meta.fidelity);
-    await brain.load();
-  }
+  if (!brain) {
+    brain = new Brain(skill, config);
 
-  // Create fixture batch if configured
-  if (shouldCreateFixtureBatch(status.fixture)) {
-    fixture = createFixtureBatch(status.fixture);
-  }
-
-  // Create a new training batch
-  batch = createTrainingBatch(fixture);
-
-  // Ensure the brain is of the right shape
-  const shape = await bestShape(playbook.meta, brain, status);
-  if (shape && (brain.shape !== shape)) {
-    brain.reshape(shape);
-
-    await brain.save({ loss: NaN, error: NaN, pass: 0 });
-
-    record = null;
+    if (await loadBrain(assignment.brain, STORE_FOLDER)) {
+      await brain.load(STORE_FOLDER);
+    } else {
+      brain.init();
+    }
   }
 
   // Ensure an initial progress record
   if (!record) {
-    await logProgress(0);
+    await writeProgress(TRAINER_NAME, resources());
+
+    record = { overall: Infinity };
   }
 }
 
-function train() {
-  const startTime = Date.now();
-  let endTime = startTime;
+function measure() {
+  const loss = {};
 
-  if (!epochs) epochs = 1;
+  let sum = 0;
+  let count = 0;
 
-  while (endTime - startTime < EPOCH_SIZE) {
-    const fitStart = endTime;
+  for (const [name, generator] of Object.entries(skill.playbooks)) {
+    const samples = createSamples({ playbook: generator }, MEASURE_BATCH_SIZE);
+    const measurement = brain.measure(samples);
 
-    brain.train(batch, epochs);
+    loss[name] = measurement;
 
-    endTime = Date.now();
-
-    const fitTime = endTime - fitStart;
-
-    if (fitTime < (EPOCH_SIZE / 2)) epochs = epochs * 2;
-    if (fitTime > EPOCH_SIZE) epochs = Math.ceil(epochs / 2);
+    sum += measurement;
+    count++;
   }
 
-  return time ? (endTime - startTime) / (endTime - time) : 0;
-}
+  loss.overall = sum / count;
 
-async function closeEpoch(resourceEfficiency) {
-  await logProgress(resourceEfficiency);
-}
-
-async function logProgress(resourceEfficiency) {
-  control = await measure(brain, playbook);
-
-  if (!record || (control.overall.loss < record.overall.loss)) {
-    await brain.save(control.overall);
-
-    record = control;
-  }
-
-  await updateStatus(BRAIN_NAME, { ...control.overall, ...resources(), efficiency: resourceEfficiency });
-}
-
-async function measure(brain, playbook) {
-  const logs = {
-    overall: await brain.measure(playbook.batch(BATCH_SIZE)),
-  };
-
-  if (fixture) {
-    logs["fixture"] = await brain.measure(fixture);
-  }
-
-  const batchSize = Math.ceil(BATCH_SIZE / playbook.playbooks.length);
-  for (const batch of playbook.batches(batchSize)) {
-    if (batch.source.length) {
-      logs[batch.source[0]] = await brain.measure(batch);
-    }
-  }
-
-  return logs;
-}
-
-function shouldCreateFixtureBatch(config) {
-  if (!config) return false;
-  if (!fixture) return true;
-  if (!control) return false;
-  if (!control.fixture) return false;
-
-  if (control.fixture.loss > threshold) {
-    threshold = Infinity;
-    return true;
-  } else {
-    threshold = control.fixture.loss;
-    return false;
-  }
-}
-
-function createFixtureBatch(config) {
-  const ratio = Number(config.split(" ")[0].split("%")[0]) / 100;
-  const batchSize = Math.floor(BATCH_SIZE * ratio);
-
-  let playbookName;
-  let playbookLoss = -Infinity;
-  if (control) {
-    for (const name in control) {
-      if ((name === "overall") || (name === "fixture")) continue;
-
-      if (control[name].loss > playbookLoss) {
-        playbookName = name;
-        playbookLoss = control[name].loss;
-      }
-    }
-  }
-
-  return playbook.batch(batchSize, playbookName);
-}
-
-function createTrainingBatch(fixture) {
-  if (fixture) {
-    if (fixture.length >= BATCH_SIZE) {
-      return fixture;
-    } else {
-      const batch = playbook.batch(BATCH_SIZE - fixture.length);
-
-      return {
-        length: BATCH_SIZE,
-        source: [...fixture.source, ...batch.source],
-        input: [...fixture.input, ...batch.input],
-        inputSize: fixture.inputSize,
-        output: [...fixture.output, ...batch.output],
-        outputSize: fixture.outputSize,
-      };
-    }
-  } else {
-    return playbook.batch(BATCH_SIZE);
-  }
+  return loss;
 }
 
 go();

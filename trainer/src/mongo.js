@@ -7,7 +7,7 @@ const pipelineAsync = promisify(finished);
 
 let db = null;
 
-async function connect(brain) {
+async function connect() {
   if (!db) {
     const client = new MongoClient(process.env.MONGO_URL || "mongodb://mongo:27017", { connectTimeoutMS: 0 });
 
@@ -17,55 +17,55 @@ async function connect(brain) {
 
     db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 } );
 
-    if (brain) {
-      await updateStatus(brain, {});
-    }
+    // TEMPORARY
+    await addAssignment();
+    // TEMPORARY
   }
 
   return db;
 }
 
-export async function readSession(skill) {
+// TEMPORARY
+async function addAssignment() {
   const db = await connect();
+  const assignments = db.collection("assignments");
 
-  return await db.collection("sessions").findOne({ skill: skill });
-}
-
-export async function updateSession(skill, data) {
-  const db = await connect();
-
-  await db.collection("sessions").updateOne({ skill: skill }, { $set: data }, { upsert: true });
-}
-
-export async function readStatus(brain) {
-  const db = await connect(brain);
-
-  return await db.collection("brains").findOne({ brain: brain });
-}
-
-export async function updateStatus(brain, progress) {
-  const db = await connect(brain);
-
-  progress.brain = brain;
-  progress.time = new Date();
-
-  await db.collection("progress").insertOne(progress);
-
-  const status = {
-    tick: Date.now(),
+  const assignment = {
+    trainer: "trainer-0",
+    brain: "tic-tac-toe",
+    skill: "https://github.com/stephanzlatarev/test/gym/skill/tic-tac-toe",
+    config: {
+      attributeWidth: 64,
+      objectWidth: 128,
+      brainWidth: 512,
+      brainLayers: 4,
+      attentionHeads: 8,
+      attentionGroups: 2,
+      dropoutRate: 0.1,
+      batchSize: 100,
+    },
   };
 
-  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
+  await assignments.updateOne({ trainer: assignment.trainer }, { $set: assignment }, { upsert: true });
 }
 
-export async function leaderboard(brain, skill) {
-  const db = await connect(brain);
+export async function readAssignment(trainer) {
+  const db = await connect();
+  const assignments = db.collection("assignments");
 
-  const leaderboard = await db.collection("brains").find({ skill: skill }).toArray();
+  return assignments.findOne({ trainer });
+}
 
-  leaderboard.sort((a, b) => (a.loss - b.loss));
+export async function writeProgress(trainer, progress) {
+  const db = await connect();
+  const progresses = db.collection("progress");
 
-  return leaderboard;
+  progress.time = new Date();
+  progress.trainer = trainer;
+
+  await progresses.insertOne(progress);
+
+  console.log("[progress]", JSON.stringify(progress));
 }
 
 export async function loadBrain(brain, folder) {
@@ -87,8 +87,9 @@ export async function loadBrain(brain, folder) {
   }
 }
 
-export async function saveBrain(brain, folder, skill, shape, performance) {
-  const db = await connect(brain);
+export async function saveBrain(brain, folder, skill, loss) {
+  const db = await connect();
+  const brains = db.collection("brains");
   const bucket = new GridFSBucket(db);
 
   // Delete previous files
@@ -106,12 +107,9 @@ export async function saveBrain(brain, folder, skill, shape, performance) {
   const status = {
     brain: brain,
     skill: skill,
-    shape: shape,
+    loss: loss,
     time: Date.now(),
-    loss: performance.loss,
-    error: performance.error,
-    pass: performance.pass,
   };
 
-  await db.collection("brains").updateOne({ brain: brain }, { $set: status }, { upsert: true });
+  await brains.updateOne({ brain: brain }, { $set: status }, { upsert: true });
 }

@@ -70,6 +70,24 @@ export default class Brain {
     await saveModel(this.model, folder);
   }
 
+  measure(samples) {
+    tf.engine().startScope();
+
+    const data = encodeBatch(this.meta, this.skill, samples);
+    const numInputs = this.model.inputs.length;
+    const inputs = data.slice(0, numInputs);
+    const targets = data.slice(numInputs);
+
+    const result = this.model.evaluate(inputs, targets, { batchSize: samples.length });
+
+    const values = Array.isArray(result) ? result : [result];
+    const loss = values[0].dataSync()[0];
+
+    tf.engine().endScope();
+
+    return loss;
+  }
+
   summary() {
     this.model.summary();
   }

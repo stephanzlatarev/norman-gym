@@ -1,6 +1,10 @@
 import { sendError, sendResponse } from "./http.js";
 import { list, load, update, remove } from "./mongo.js";
 
+export async function readAssignments(_, response) {
+  return sendResponse(response, await list("assignments", {}));
+}
+
 export async function downloadBrain(request, response) {
   const file = await load(request.params.brain);
 
@@ -19,13 +23,8 @@ export async function readExamination(request, response) {
   return sendResponse(response, await list("examinations", { brain: request.params.brain }));
 }
 
-export async function readProgress(request, response) {
-  const data = {
-    progress: await list("progress", { brain: request.params.brain }),
-    samples: await list("samples", { brain: request.params.brain }),
-  };
-
-  return sendResponse(response, data);
+export async function readProgress(_, response) {
+  return sendResponse(response, await list("progress", {}));
 }
 
 export async function releaseBrain(request, response) {

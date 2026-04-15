@@ -100,8 +100,8 @@ function validateSkill(skill) {
     if (!(groupName in skill.observe))
       errors.push(`Act group "${groupName}" must match an observe group name.`);
 
-    if (typeof group.modify !== "boolean")
-      errors.push(`Act group "${groupName}": modify must be a boolean.`);
+    group.modify = (group.modify !== false);
+    group.create = group.create || 0;
 
     if (!Number.isInteger(group.create) || group.create < 0)
       errors.push(`Act group "${groupName}": create must be a non-negative integer.`);

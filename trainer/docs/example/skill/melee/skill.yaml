@@ -1,0 +1,64 @@
+# This is a skill for fighting in StarCraft 2
+name: StarCraft 2 melee
+
+observe:
+
+  enemies:
+    limit: 10
+    attributes:
+
+      - name: type
+        options: ["Zealot", "Stalker", "Sentry", "Immortal", "Colossus"]
+      - name: health
+        range: [0, 500]
+      - name: radius
+        range: [0, 5]
+      - name: range
+        range: [0, 5]
+
+      - name: posx
+        type: space
+        range: [0, 300]
+      - name: posy
+        type: space
+        range: [0, 300]
+
+  warriors:
+    limit: 10
+    attributes:
+
+      - name: type
+        options: ["Zealot", "Stalker", "Sentry", "Immortal", "Colossus"]
+      - name: health
+        range: [0, 500]
+      - name: radius
+        range: [0, 5]
+      - name: range
+        range: [0, 5]
+
+      - name: posx
+        type: space
+        range: [0, 300]
+      - name: posy
+        type: space
+        range: [0, 300]
+
+      - name: action
+        options: ["None", "Move", "Attack"]
+      - name: targetx
+        type: space
+        range: [0, 300]
+      - name: targety
+        type: space
+        range: [0, 300]
+
+act:
+
+  warriors:
+    attributes:
+      - name: action
+      - name: targetx
+      - name: targety
+
+playbooks:
+  focus-fire: playbook-attack.js

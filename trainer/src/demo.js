@@ -19,6 +19,8 @@ const config = {
   batchSize: 100,
 };
 
+const reloadModelAfterIteration = false;
+
 async function loadPlaybooks() {
   const playbooks = {};
 
@@ -32,10 +34,10 @@ async function loadPlaybooks() {
 }
 
 async function main() {
-  console.log("Building Tic-Tac-Toe Brain...\n");
+  console.log(`Building ${skill.name}...\n`);
 
   const saveFolder = process.cwd() + "/test_save";
-  if (!fs.existsSync(saveFolder)) fs.mkdirSync(saveFolder, { recursive: true });
+  if (reloadModelAfterIteration && !fs.existsSync(saveFolder)) fs.mkdirSync(saveFolder, { recursive: true });
 
   const playbooks = await loadPlaybooks();
 
@@ -56,17 +58,19 @@ async function main() {
 
     console.log(`Iteration ${i}: loss=${loss.toFixed(6)} | act=${JSON.stringify(act)}`);
 
-    console.log("\nSaving model...");
-    await brain.save(saveFolder);
-    console.log("Saved to", saveFolder);
+    if (reloadModelAfterIteration) {
+      console.log("\nSaving model...");
+      await brain.save(saveFolder);
+      console.log("Saved to", saveFolder);
 
-    console.log("\nLoading model...");
-    brain = new Brain(skill, config);
-    await brain.load(saveFolder);
+      console.log("\nLoading model...");
+      brain = new Brain(skill, config);
+      await brain.load(saveFolder);
+    }
   }
 
   // Cleanup
-  fs.rmSync(saveFolder, { recursive: true, force: true });
+  if (reloadModelAfterIteration) fs.rmSync(saveFolder, { recursive: true, force: true });
 
   console.log("\nDone!");
 }

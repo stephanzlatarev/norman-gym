@@ -26,11 +26,8 @@ async function connect() {
 }
 
 // TEMPORARY
-async function addAssignment() {
-  const db = await connect();
-  const assignments = db.collection("assignments");
-
-  const assignment = {
+const ASSIGNMENTS = [
+  {
     trainer: "trainer-0",
     brain: "tic-tac-toe",
     skill: "https://github.com/stephanzlatarev/test/gym/skill/tic-tac-toe",
@@ -43,10 +40,31 @@ async function addAssignment() {
       attentionGroups: 2,
       dropoutRate: 0.1,
       batchSize: 100,
-    },
-  };
+    }
+  },
+  {
+    trainer: "trainer-1",
+    brain: "melee",
+    skill: "https://github.com/stephanzlatarev/test/gym/skill/melee",
+    config: {
+      attributeWidth: 64,
+      objectWidth: 128,
+      brainWidth: 512,
+      brainLayers: 2,
+      attentionHeads: 8,
+      attentionGroups: 2,
+      dropoutRate: 0.1,
+      batchSize: 100,
+    }
+  },
+];
+async function addAssignment() {
+  const db = await connect();
+  const assignments = db.collection("assignments");
 
-  await assignments.updateOne({ trainer: assignment.trainer }, { $set: assignment }, { upsert: true });
+  for (const assignment of ASSIGNMENTS) {
+    await assignments.updateOne({ trainer: assignment.trainer }, { $set: assignment }, { upsert: true });
+  }
 }
 
 export async function readAssignment(trainer) {

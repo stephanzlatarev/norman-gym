@@ -1,6 +1,9 @@
 import React from "react";
-import Stack from "@mui/material/Stack";
-import Api from "./Api";
+import Box from "@mui/material/Box";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import Brains from "./Brains";
+import Trainers from "./Trainers";
 
 export default class App extends React.Component {
 
@@ -8,41 +11,40 @@ export default class App extends React.Component {
     super();
 
     this.state = {
-      tracker: null,
-      brains: [],
+      tab: 0,
     };
   }
 
-  async componentDidMount() {
-    await this.refresh();
-
-    this.setState({ tracker: setInterval(this.refresh.bind(this), 10000) });
+  onTabChange(_, value) {
+    this.setState({ tab: value });
   }
 
-  componentWillUnmount() {
-    if (this.state.tracker) clearInterval(this.state.tracker);
+  renderTabs() {
+    return (
+      <Tabs value={ this.state.tab } onChange={ this.onTabChange.bind(this) }>
+        <Tab label="Trainers" />
+        <Tab label="Brains" />
+      </Tabs>
+    );
   }
 
-  async refresh() {
-    const state = {};
-
-    state.brains = await Api.get("brains") || [];
-
-    this.setState(state);
+  renderView() {
+    switch (this.state.tab) {
+      case 0: return (<Trainers />);
+      case 1: return (<Brains />);
+      default: return (<div>Oooops! Refresh the page, please!</div>);
+    }
   }
 
   render() {
-    const brains = this.state.brains.map(one => (
-      <div key={ one.brain }>
-        { one.brain } | { new Date(one.time).toLocaleString() } | skill: { one.skill } | loss: { one.loss }
-      </div>
-    ));
-
     return (
       <div className="App">
-        <Stack spacing={2} direction="column" margin={{ xs: "0rem", sm: "1rem" }}>
-          { brains }
-        </Stack>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          { this.renderTabs() }
+        </Box>
+        <Box sx={{ pt: 2 }}>
+          { this.renderView() }
+        </Box>
       </div>
     );
   }

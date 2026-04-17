@@ -1,7 +1,7 @@
 import Brain from "@norman-gym/brain/Brain.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
 import loadSkill from "./git.js";
-import { readAssignment, writeProgress, loadBrain, saveBrain } from "./mongo.js";
+import { readAssignment, writeProgress, loadBrain, saveBrain } from "@norman-gym/bank/mongo.js";
 import resources from "./resources.js";
 
 const TRAINER_NAME = process.env.HOSTNAME;

@@ -5,6 +5,11 @@ COPY brain/package.json ./package.json
 RUN npm install --omit=dev
 COPY brain/src ./src
 
+WORKDIR /app/bank
+COPY bank/package.json ./package.json
+RUN npm install --omit=dev
+COPY bank/src ./src
+
 WORKDIR /app/trainer
 COPY trainer/package.json ./package.json
 RUN npm install --omit=dev

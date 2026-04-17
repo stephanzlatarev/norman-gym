@@ -15,7 +15,7 @@ async function connect() {
 
     db = client.db("gym");
 
-    db.collection("progress").createIndex( { time: 1 }, { expireAfterSeconds: 60 * 60 } );
+    db.collection("progress").createIndex({ time: 1 }, { expireAfterSeconds: 60 * 60 });
 
     // TEMPORARY
     await addAssignment();

@@ -1,0 +1,11 @@
+{
+  "name": "@norman-gym/bank",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./mongo.js": "./src/mongo.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  }
+}

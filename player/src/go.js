@@ -1,5 +1,6 @@
 import Brain from "@norman-gym/brain/Brain.js";
-import { watchOperation, writeOperation, completeOperation, loadBrain } from "@norman-gym/bank/mongo.js";
+import { loadBrain } from "@norman-gym/bank/brains.js";
+import { addOperation, completeOperation, watchOperation } from "@norman-gym/bank/operations.js";
 import loadSkill from "./git.js";
 
 const STORE_FOLDER = process.cwd();
@@ -21,7 +22,7 @@ async function play({ uuid, brain, observe }) {
   try {
     const act = (await readBrain(brain)).decide(observe);
 
-    await writeOperation({ type: "display", uuid, brain, observe, act });
+    await addOperation({ type: "display", uuid, brain, observe, act });
     await completeOperation(uuid);
   } catch (cause) {
     console.log("Failed to process operation", operation.uuid, cause?.message || cause);

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "exports": {
-    "./mongo.js": "./src/mongo.js"
+    "./*.js": "./src/*.js"
   },
   "dependencies": {
     "mongodb": "^6.0.0"

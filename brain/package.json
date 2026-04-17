@@ -1,0 +1,12 @@
+{
+  "name": "@norman-gym/brain",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./Brain.js": "./src/Brain.js",
+    "./ops/*.js": "./src/ops/*.js"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.8.0"
+  }
+}

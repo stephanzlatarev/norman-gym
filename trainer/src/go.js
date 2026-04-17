@@ -1,5 +1,5 @@
-import Brain from "./brain/Brain.js";
-import createSamples from "./brain/ops/samples.js";
+import Brain from "@norman-gym/brain/Brain.js";
+import createSamples from "@norman-gym/brain/ops/samples.js";
 import loadSkill from "./git.js";
 import { readAssignment, writeProgress, loadBrain, saveBrain } from "./mongo.js";
 import resources from "./resources.js";

@@ -2,10 +2,10 @@ import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
 import YAML from "yaml";
-import Brain from "./brain/Brain.js";
-import createSamples from "./brain/ops/samples.js";
+import Brain from "@norman-gym/brain/Brain.js";
+import createSamples from "@norman-gym/brain/ops/samples.js";
 
-const skillFolder = "docs/example/skill/tic-tac-toe";
+const skillFolder = "skill/tic-tac-toe";
 const skill = YAML.parse(fs.readFileSync(path.join(skillFolder, "skill.yaml"), "utf8"));
 
 const config = {

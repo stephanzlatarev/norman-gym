@@ -6,7 +6,7 @@
     "start": "node ./src/go.js"
   },
   "dependencies": {
-    "@tensorflow/tfjs-node": "^4.8.0",
+    "@norman-gym/brain": "file:../brain",
     "mongodb": "^6.0.0",
     "yaml": "^2.8.3"
   }

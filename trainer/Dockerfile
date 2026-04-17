@@ -1,10 +1,13 @@
 FROM node:20
 
-WORKDIR /app
+WORKDIR /app/brain
+COPY brain/package.json ./package.json
+RUN npm install --omit=dev
+COPY brain/src ./src
 
-COPY package.json .
-RUN npm install --only=production
-
-COPY src ./src
+WORKDIR /app/trainer
+COPY trainer/package.json ./package.json
+RUN npm install --omit=dev
+COPY trainer/src ./src
 
 CMD [ "npm", "start" ]

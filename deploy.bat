@@ -10,11 +10,9 @@ call gym apply -f ./kubernetes.yaml
 cd ..
 
 echo Deploying trainer...
-cd trainer
-docker build -t docker.io/stephanzlatarev/norman-gym-trainer .
+docker build -f ./trainer/Dockerfile -t docker.io/stephanzlatarev/norman-gym-trainer .
 docker push docker.io/stephanzlatarev/norman-gym-trainer
-call gym apply -f ./kubernetes.yaml
-cd ..
+call gym apply -f ./trainer/kubernetes.yaml
 
 REM echo Deploying doctor...
 REM cd doctor

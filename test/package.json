@@ -1,0 +1,9 @@
+{
+  "name": "norman-gym-test",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@norman-gym/brain": "file:../brain",
+    "yaml": "^2.8.3"
+  }
+}

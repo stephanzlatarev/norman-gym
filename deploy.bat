@@ -14,6 +14,11 @@ docker build -f ./trainer/Dockerfile -t docker.io/stephanzlatarev/norman-gym-tra
 docker push docker.io/stephanzlatarev/norman-gym-trainer
 call gym apply -f ./trainer/kubernetes.yaml
 
+echo Deploying player...
+docker build -f ./player/Dockerfile -t docker.io/stephanzlatarev/norman-gym-player .
+docker push docker.io/stephanzlatarev/norman-gym-player
+call gym apply -f ./player/kubernetes.yaml
+
 REM echo Deploying doctor...
 REM cd doctor
 REM docker build -t docker.io/stephanzlatarev/norman-gym-doctor .

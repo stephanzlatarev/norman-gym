@@ -1,0 +1,28 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: player
+  labels:
+    module: player
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      module: player
+  serviceName: "player"
+  template:
+    metadata:
+      labels:
+        module: player
+    spec:
+      containers:
+        - name: player
+          image: docker.io/stephanzlatarev/norman-gym-player
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+          env:
+            - name: VERSION
+              value: "0"

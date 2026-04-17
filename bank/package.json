@@ -6,6 +6,7 @@
     "./*.js": "./src/*.js"
   },
   "dependencies": {
-    "mongodb": "^6.0.0"
+    "mongodb": "^6.0.0",
+    "yaml": "^2.8.3"
   }
 }

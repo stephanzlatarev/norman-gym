@@ -7,7 +7,6 @@
   },
   "dependencies": {
     "@norman-gym/brain": "file:../brain",
-    "@norman-gym/bank": "file:../bank",
-    "yaml": "^2.8.3"
+    "@norman-gym/bank": "file:../bank"
   }
 }

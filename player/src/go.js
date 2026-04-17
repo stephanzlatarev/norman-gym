@@ -1,7 +1,7 @@
 import Brain from "@norman-gym/brain/Brain.js";
 import { loadBrain } from "@norman-gym/bank/brains.js";
 import { addOperation, completeOperation, watchOperation } from "@norman-gym/bank/operations.js";
-import loadSkill from "./git.js";
+import loadSkill from "@norman-gym/bank/skills.js";
 
 const STORE_FOLDER = process.cwd();
 const SKILL_BASE_URL = process.env.SKILL_BASE_URL || "https://github.com/stephanzlatarev/test/gym/skill";
@@ -25,7 +25,7 @@ async function play({ uuid, brain, observe }) {
     await addOperation({ type: "display", uuid, brain, observe, act });
     await completeOperation(uuid);
   } catch (cause) {
-    console.log("Failed to process operation", operation.uuid, cause?.message || cause);
+    console.log("Failed to process operation", uuid, cause?.message || cause);
   }
 }
 

@@ -3,11 +3,9 @@ echo Deploying networking and database...
 call gym apply -f ./kubernetes.yaml
 
 echo Deploying api...
-cd api
-docker build -t docker.io/stephanzlatarev/norman-gym-api .
+docker build -f ./api/Dockerfile -t docker.io/stephanzlatarev/norman-gym-api .
 docker push docker.io/stephanzlatarev/norman-gym-api
-call gym apply -f ./kubernetes.yaml
-cd ..
+call gym apply -f ./api/kubernetes.yaml
 
 echo Deploying trainer...
 docker build -f ./trainer/Dockerfile -t docker.io/stephanzlatarev/norman-gym-trainer .

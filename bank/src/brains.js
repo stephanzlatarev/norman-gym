@@ -1,17 +1,18 @@
 import { collection, downloadFile, uploadFile } from "./db.js";
 
 const KIND_BRAIN = "brain";
-const FILE_WEIGHTS = "weights.bin";
-const FILE_MODEL = "model.json";
-const FILE_BRAIN = "brain.tf";
+
+export const FILE_WEIGHTS = "weights.bin";
+export const FILE_MODEL = "model.json";
+export const FILE_BRAIN = "brain.tf";
 
 export async function downloadBrain(brain, folder) {
-  await downloadFile(KIND_BRAIN, brain, FILE_BRAIN, folder);
+  return await downloadFile(KIND_BRAIN, brain, FILE_BRAIN, folder);
 }
 
 export async function downloadModel(brain, folder) {
   if (await downloadFile(KIND_BRAIN, brain, FILE_WEIGHTS, folder)) {
-    await downloadFile(KIND_BRAIN, brain, FILE_MODEL, folder);
+    return await downloadFile(KIND_BRAIN, brain, FILE_MODEL, folder);
   }
 }
 

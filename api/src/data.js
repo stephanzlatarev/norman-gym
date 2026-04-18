@@ -1,17 +1,21 @@
+import { list } from "@norman-gym/bank/db.js";
+import { downloadBrain, FILE_BRAIN } from "@norman-gym/bank/brains.js";
+import { sendEvent } from "@norman-gym/bank/events.js";
 import { sendError, sendResponse } from "./http.js";
-import { list, load, update, remove } from "./mongo.js";
 
 export async function readAssignments(_, response) {
   return sendResponse(response, await list("assignments", {}));
 }
 
-export async function downloadBrain(request, response) {
-  const file = await load(request.params.brain);
+export async function downloadBrainFile(request, response) {
+  const brain = request.params.brain;
+  const folder = "./downloads/brain/" + brain;
+  const downloaded = await downloadBrain(brain, folder);
 
-  if (file) {
-    response.download(file);
+  if (downloaded) {
+    response.download(folder + "/" + FILE_BRAIN);
   } else {
-    sendError(response, "Unable to read it from database!");
+    return sendError(response, "Unable to read it from database!");
   }
 }
 
@@ -19,49 +23,23 @@ export async function readBrains(_, response) {
   return sendResponse(response, await list("brains", {}));
 }
 
-export async function readExamination(request, response) {
-  return sendResponse(response, await list("examinations", { brain: request.params.brain }));
+export async function readEvents(_, response) {
+  // TODO: Read events since the given time
+  return sendResponse(response, await list("events", {}));
+}
+
+export async function postEvent(request, response) {
+  const event = request.body;
+
+  try {
+    await sendEvent(event);
+
+    return sendResponse(response, { status: "OK" });
+  } catch (error) {
+    return sendError(response, { status: "ERROR", details: error?.message || error });
+  }
 }
 
 export async function readProgress(_, response) {
   return sendResponse(response, await list("progress", {}));
-}
-
-export async function releaseBrain(request, response) {
-  if (request.params.brain && request.params.brain.length) {
-    await remove(request.params.brain);
-  }
-
-  return await updateBrainWithProperties(request, response, { skill: null });
-}
-
-export async function lockBrain(request, response) {
-  return await updateBrainWithProperties(request, response, { locked: true });
-}
-
-export async function unlockBrain(request, response) {
-  return await updateBrainWithProperties(request, response, { locked: false });
-}
-
-export async function updateBrain(request, response) {
-  const properties = {};
-
-  if (request.body.fixture !== undefined) properties["fixture"] = (request.body.fixture !== "") ? request.body.fixture : null;
-  if (request.body.locked !== undefined) properties["locked"] = request.body.locked;
-  if (request.body.shape !== undefined) properties["shape"] = request.body.shape;
-  if (request.body.skill !== undefined) properties["skill"] = request.body.skill;
-
-  return await updateBrainWithProperties(request, response, properties);
-}
-
-async function updateBrainWithProperties(request, response, properties) {
-  if (request.params.brain && request.params.brain.length) {
-    await update("brains", { brain: request.params.brain }, properties);
-  }
-
-  return sendResponse(response, "OK");
-}
-
-export async function readSessions(_, response) {
-  return sendResponse(response, await list("sessions", {}));
 }

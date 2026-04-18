@@ -26,6 +26,12 @@ export async function collection(name) {
   return (await connect()).collection(name);
 }
 
+export async function list(name, filter) {
+  const list = await collection(name);
+
+  return await list.find(filter).toArray();
+}
+
 export async function downloadFile(kind, key, name, folder) {
   const dbpath = kind + "/" + key + "/" + name;
   const fspath = folder + "/" + name;

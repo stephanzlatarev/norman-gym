@@ -1,6 +1,6 @@
 import bodyParser from "body-parser";
 import express from "express";
-import { readAssignments, downloadBrain, lockBrain, readBrains, readExamination, readProgress, readSessions, releaseBrain, unlockBrain, updateBrain } from "./data.js";
+import { downloadBrainFile, readAssignments, readBrains, readEvents, readProgress, postEvent } from "./data.js";
 
 const port = process.env.PORT || 3000;
 const app = express();
@@ -12,15 +12,11 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get("/api/assignments", readAssignments);
 app.get("/api/brains", readBrains);
-app.get("/api/brains/:brain/download", downloadBrain);
-app.get("/api/brains/:brain/examination", readExamination);
+app.get("/api/brains/:brain/download", downloadBrainFile);
+app.get("/api/events", readEvents);
 app.get("/api/progress", readProgress);
-app.get("/api/sessions", readSessions);
 
-app.post("/api/brains/:brain/lock", lockBrain);
-app.post("/api/brains/:brain/release", releaseBrain);
-app.post("/api/brains/:brain/unlock", unlockBrain);
-app.post("/api/brains/:brain/update", updateBrain);
+app.post("/api/events", postEvent);
 
 export const server = app.listen(port, () => {
   console.log(`Server successfully started on ${port}`);

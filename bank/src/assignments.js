@@ -1,8 +1,7 @@
-import { connect } from "./db.js";
+import { collection } from "./db.js";
 
 export async function addAssignment(trainer, assignment) {
-  const db = await connect();
-  const assignments = db.collection("assignments");
+  const assignments = await collection("assignments");
 
   assignment.trainer = trainer;
 
@@ -10,8 +9,7 @@ export async function addAssignment(trainer, assignment) {
 }
 
 export async function readAssignment(trainer) {
-  const db = await connect();
-  const assignments = db.collection("assignments");
+  const assignments = await collection("assignments");
 
   return assignments.findOne({ trainer });
 }

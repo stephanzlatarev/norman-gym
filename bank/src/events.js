@@ -1,11 +1,7 @@
-import { connect } from "./db.js";
-
-async function collection() {
-  return (await connect()).collection("events");
-}
+import { collection } from "./db.js";
 
 export async function sendEvent(event) {
-  const events = await collection();
+  const events = await collection("events");
 
   event.time = new Date();
 
@@ -13,7 +9,7 @@ export async function sendEvent(event) {
 }
 
 export async function watchEvents(type, handle) {
-  const events = await collection();
+  const events = await collection("events");
   const stream = events.watch([
     {
       $match: {
@@ -43,7 +39,7 @@ export async function watchEvents(type, handle) {
 }
 
 export async function consumeEvent(uuid) {
-  const events = await collection();
+  const events = await collection("events");
 
   await events.deleteOne({ uuid });
 }

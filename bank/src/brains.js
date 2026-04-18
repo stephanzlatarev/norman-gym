@@ -1,38 +1,22 @@
-import fs from "fs";
-import { GridFSBucket } from "mongodb";
-import { connect, pipelineAsync } from "./db.js";
+import { collection, downloadFile, uploadFile } from "./db.js";
+
+const KIND_BRAIN = "brain";
+const FILE_WEIGHTS = "weights.bin";
+const FILE_MODEL = "model.json";
+const FILE_BRAIN = "brain.tf";
 
 export async function loadBrain(brain, folder) {
-  const db = await connect();
-  const bucket = new GridFSBucket(db);
-  const records = bucket.find({ filename: brain + "-weights" });
-
-  if (await records.hasNext()) {
-    const record = await records.next();
-    const timestamp = new Date(record.uploadDate).getTime();
-
-    await pipelineAsync(bucket.openDownloadStreamByName(brain + "-weights").pipe(fs.createWriteStream(folder + "/weights.bin")));
-
-    if (await bucket.find({ filename: brain + "-model" }).hasNext()) {
-      await pipelineAsync(bucket.openDownloadStreamByName(brain + "-model").pipe(fs.createWriteStream(folder + "/model.json")));
-
-      return fs.existsSync(folder + "/model.json") ? timestamp : null;
-    }
+  if (await downloadFile(KIND_BRAIN, brain, FILE_WEIGHTS, folder)) {
+    await downloadFile(KIND_BRAIN, brain, FILE_MODEL, folder);
   }
 }
 
 export async function saveBrain(brain, folder, skill, loss) {
-  const db = await connect();
-  const brains = db.collection("brains");
-  const bucket = new GridFSBucket(db);
+  await uploadFile(KIND_BRAIN, brain, FILE_WEIGHTS, folder);
+  await uploadFile(KIND_BRAIN, brain, FILE_MODEL, folder);
+  await uploadFile(KIND_BRAIN, brain, FILE_BRAIN, folder);
 
-  for await (const file of bucket.find({ metadata: { brain } })) {
-    await bucket.delete(file._id);
-  }
-
-  await pipelineAsync(fs.createReadStream(folder + "/weights.bin").pipe(bucket.openUploadStream(brain + "-weights", { metadata: { brain } })));
-  await pipelineAsync(fs.createReadStream(folder + "/model.json").pipe(bucket.openUploadStream(brain + "-model", { metadata: { brain } })));
-  await pipelineAsync(fs.createReadStream(folder + "/brain.tf").pipe(bucket.openUploadStream(brain + "-brain", { metadata: { brain } })));
+  const brains = await collection("brains");
 
   const status = {
     brain,

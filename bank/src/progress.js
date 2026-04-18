@@ -1,8 +1,7 @@
-import { connect } from "./db.js";
+import { collection } from "./db.js";
 
 export async function writeProgress(trainer, progress) {
-  const db = await connect();
-  const progresses = db.collection("progress");
+  const progresses = await collection("progress");
 
   progress.time = new Date();
   progress.trainer = trainer;

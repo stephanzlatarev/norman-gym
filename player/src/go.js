@@ -36,7 +36,7 @@ async function readBrain(name) {
 
   if (!cached || skillChanged || configChanged) {
     const skill = await loadSkill(skillUrl);
-    const brain = new Brain(skill, BRAIN_CONFIG);
+    const brain = new Brain(name, BRAIN_CONFIG, skill);
 
     // TODO: Download brain.tf instead and load as norman would
     if (await downloadModel(name, STORE_FOLDER)) {
@@ -47,8 +47,8 @@ async function readBrain(name) {
 
     cache.set(name, {
       brain,
-      skillUrl,
       config: BRAIN_CONFIG,
+      skillUrl,
     });
 
     return brain;

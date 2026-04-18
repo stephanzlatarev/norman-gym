@@ -28,9 +28,6 @@ function validateConfig(config) {
   if (typeof config.dropoutRate !== "number" || config.dropoutRate < 0 || config.dropoutRate > 1)
     errors.push("dropoutRate must be a number in [0, 1].");
 
-  if (!Number.isInteger(config.batchSize) || config.batchSize <= 0)
-    errors.push("batchSize must be a positive integer.");
-
   return errors;
 }
 

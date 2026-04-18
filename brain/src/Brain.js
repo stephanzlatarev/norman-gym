@@ -10,11 +10,12 @@ const OPTIMIZER = "adam";
 
 export default class Brain {
 
-  constructor(skill, config) {
+  constructor(name, config, skill) {
     validate(skill, config);
 
-    this.skill = skill;
+    this.name = name;
     this.config = config;
+    this.skill = skill;
     this.meta = computeMetadata(skill, config);
   }
 

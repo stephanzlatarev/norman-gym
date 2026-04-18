@@ -5,8 +5,8 @@ import YAML from "yaml";
 import Brain from "@norman-gym/brain/Brain.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
 
-const skillFolder = "skill/tic-tac-toe";
-const skill = YAML.parse(fs.readFileSync(path.join(skillFolder, "skill.yaml"), "utf8"));
+const name = "tic-tac-toe";
+const skill = YAML.parse(fs.readFileSync(path.join("skill", name, "skill.yaml"), "utf8"));
 
 const config = {
   attributeWidth: 64,
@@ -24,24 +24,24 @@ const reloadModelAfterIteration = false;
 async function loadPlaybooks() {
   const playbooks = {};
 
-  for (const [name, script] of Object.entries(skill.playbooks)) {
-    const modulePath = pathToFileURL(path.resolve(skillFolder, script)).href;
+  for (const [key, script] of Object.entries(skill.playbooks)) {
+    const modulePath = pathToFileURL(path.resolve("skill/" + name, script)).href;
     const mod = await import(modulePath);
-    playbooks[name] = mod.default;
+    playbooks[key] = mod.default;
   }
 
   return playbooks;
 }
 
 async function main() {
-  console.log(`Building ${skill.name}...\n`);
+  console.log(`Building ${name}...\n`);
 
   const saveFolder = process.cwd() + "/test_save";
   if (reloadModelAfterIteration && !fs.existsSync(saveFolder)) fs.mkdirSync(saveFolder, { recursive: true });
 
   const playbooks = await loadPlaybooks();
 
-  let brain = new Brain(skill, config);
+  let brain = new Brain(name, config, skill);
   brain.init();
   brain.summary();
 
@@ -64,7 +64,7 @@ async function main() {
       console.log("Saved to", saveFolder);
 
       console.log("\nLoading model...");
-      brain = new Brain(skill, config);
+      brain = new Brain(name, config, skill);
       await brain.load(saveFolder);
     }
   }

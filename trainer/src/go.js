@@ -2,20 +2,22 @@ import Brain from "@norman-gym/brain/Brain.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
 import loadSkill from "@norman-gym/bank/skills.js";
 import { readAssignment } from "@norman-gym/bank/assignments.js";
-import { downloadModel, uploadModel } from "@norman-gym/bank/brains.js";
+import { readBrain, downloadModel, uploadModel } from "@norman-gym/bank/brains.js";
 import { writeProgress } from "@norman-gym/bank/progress.js";
 import resources from "./resources.js";
 
 const TRAINER_NAME = process.env.HOSTNAME;
 const SESSION_SECONDS = 60;
 const SESSION_MILLIS = SESSION_SECONDS * 1000;
-const MEASURE_BATCH_SIZE = 1000;
+const DEFAULT_TRAINING_BATCH_SIZE = 100;
+const DEFAULT_MEASURE_BATCH_SIZE = 1000;
 const STORE_FOLDER = process.cwd();
 
-let skill;
 let config;
 let brain;
+let skill;
 let record;
+let time;
 
 async function go() {
   while (true) {
@@ -24,14 +26,14 @@ async function go() {
     if (assignment) {
       await startSession(assignment);
 
-      brain.train(createSamples(skill.playbooks, config.batchSize), SESSION_SECONDS);
+      brain.train(createSamples(skill.playbooks, config.trainBatchSize), SESSION_SECONDS);
 
       const loss = measure();
 
       if (loss.overall < record.overall) {
         await brain.save(STORE_FOLDER);
-        await uploadModel(assignment.brain, STORE_FOLDER, loss.overall);
 
+        time = await uploadModel(assignment.brain, STORE_FOLDER, loss.overall);
         record = loss;
       }
 
@@ -44,22 +46,25 @@ async function go() {
 }
 
 async function startSession(assignment) {
-  // Ensure the skill and config are loaded
-  if (!skill || (skill.url !== assignment.skill)) {
+  syncConfiguration(assignment);
+
+  const metadata = await readBrain(assignment.brain);
+  console.log("Brain:", JSON.stringify(metadata));
+
+  const reloadBrain = shouldReloadBrain(metadata);
+  const reloadSkill = reloadBrain || shouldReloadSkill(metadata);
+
+  if (reloadSkill) {
     skill = await loadSkill(assignment.skill);
-    config = assignment.config;
-    brain = null;
-    record = null;
 
     console.log("Skill:", JSON.stringify(skill));
-    console.log("Config:", JSON.stringify(config));
   }
 
-  // Ensure the brain is up-to-date
-  if (!brain) {
-    brain = new Brain(skill, config);
+  if (reloadBrain) {
+    brain = new Brain(metadata.brain, config, skill);
+    record = null;
 
-    if (await downloadModel(assignment.brain, STORE_FOLDER)) {
+    if (await downloadModel(metadata.brain, STORE_FOLDER)) {
       await brain.load(STORE_FOLDER);
     } else {
       brain.init();
@@ -74,6 +79,61 @@ async function startSession(assignment) {
   }
 }
 
+function syncConfiguration(assignment) {
+  const messages = [];
+  const expectedConfig = { ...assignment.config };
+
+  if (!expectedConfig.trainBatchSize) {
+    messages.push("Using default training batch size");
+    expectedConfig.trainBatchSize = DEFAULT_TRAINING_BATCH_SIZE;
+  }
+
+  if (!expectedConfig.measureBatchSize) {
+    messages.push("Using default measurement batch size");
+    expectedConfig.measureBatchSize = DEFAULT_MEASURE_BATCH_SIZE;
+  }
+
+  if (JSON.stringify(config) !== JSON.stringify(expectedConfig)) {
+    console.log("===========");
+    console.log("Assignment:", JSON.stringify(assignment));
+
+    config = expectedConfig;
+
+    for (const message of messages) {
+      console.log(message);
+    }
+  }
+}
+
+function shouldReloadBrain(metadata) {
+  if (!brain) {
+    console.log("Initializing for brain", metadata.brain);
+    return true;
+  }
+
+  if (brain.name !== metadata.brain) {
+    console.log("Re-assigning from brain", brain.name, "to", metadata.brain);
+    return true;
+  }
+
+  if (time && metadata.time && (metadata.time > time)) {
+    console.log("Downloading external brain update from", time, "to", metadata.time);
+    return true;
+  }
+}
+
+function shouldReloadSkill(metadata) {
+  if (!skill) {
+    console.log("Initializing for skill", metadata.skill);
+    return true;
+  }
+
+  if (skill.url !== metadata.skill) {
+    console.log("Re-assigning from skill", skill.url, "to", metadata.skill);
+    return true;
+  }
+}
+
 function measure() {
   const loss = {};
 
@@ -81,7 +141,7 @@ function measure() {
   let count = 0;
 
   for (const [name, generator] of Object.entries(skill.playbooks)) {
-    const samples = createSamples({ playbook: generator }, MEASURE_BATCH_SIZE);
+    const samples = createSamples({ playbook: generator }, config.measureBatchSize);
     const measurement = brain.measure(samples);
 
     loss[name] = measurement;

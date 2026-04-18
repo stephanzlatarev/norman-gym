@@ -1,0 +1,49 @@
+import { connect } from "./db.js";
+
+async function collection() {
+  return (await connect()).collection("events");
+}
+
+export async function sendEvent(event) {
+  const events = await collection();
+
+  event.time = new Date();
+
+  await events.insertOne(event);
+}
+
+export async function watchEvents(type, handle) {
+  const events = await collection();
+  const stream = events.watch([
+    {
+      $match: {
+        operationType: "insert",
+        "fullDocument.type": type,
+      },
+    },
+  ]);
+
+  stream.on("change", async change => {
+    const event = change.fullDocument;
+
+    try {
+      await handle(event);
+    } catch (error) {
+      console.log("Unable to process", type, "event:", error?.message || error);
+    }
+
+    await consumeEvent(event.uuid);
+  });
+
+  stream.on("error", error => {
+    console.log("Unable to watch", type, "events:", error?.message || error);
+  });
+
+  return stream;
+}
+
+export async function consumeEvent(uuid) {
+  const events = await collection();
+
+  await events.deleteOne({ uuid });
+}

@@ -1,6 +1,6 @@
 import Brain from "@norman-gym/brain/Brain.js";
 import { loadBrain } from "@norman-gym/bank/brains.js";
-import { addOperation, completeOperation, watchOperation } from "@norman-gym/bank/operations.js";
+import { sendEvent, watchEvents } from "@norman-gym/bank/events.js";
 import loadSkill from "@norman-gym/bank/skills.js";
 
 const STORE_FOLDER = process.cwd();
@@ -18,14 +18,13 @@ const BRAIN_CONFIG = {
 
 const cache = new Map();
 
-async function play({ uuid, brain, observe }) {
+async function play({ type, uuid, brain, observe }) {
   try {
     const act = (await readBrain(brain)).decide(observe);
 
-    await addOperation({ type: "display", uuid, brain, observe, act });
-    await completeOperation(uuid);
+    await sendEvent({ type: "display", uuid, brain, observe, act });
   } catch (cause) {
-    console.log("Failed to process operation", uuid, cause?.message || cause);
+    console.log("Failed to process event", type, uuid, cause?.message || cause);
   }
 }
 
@@ -57,4 +56,4 @@ async function readBrain(name) {
   return cached.brain;
 }
 
-watchOperation("play", play);
+watchEvents("play", play);

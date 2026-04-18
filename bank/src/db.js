@@ -15,8 +15,7 @@ export async function connect() {
     db = client.db("gym");
 
     await db.collection("progress").createIndex({ time: 1 }, { expireAfterSeconds: 60 * 60 });
-    await db.collection("operations").createIndex({ type: 1, time: 1 });
-    await db.collection("operations").createIndex({ time: 1 }, { expireAfterSeconds: 60 * 60 });
+    await db.collection("events").createIndex({ time: 1 }, { expireAfterSeconds: 60 * 60 });
   }
 
   return db;

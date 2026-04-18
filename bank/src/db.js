@@ -29,11 +29,21 @@ export async function collection(name) {
 export async function downloadFile(kind, key, name, folder) {
   const dbpath = kind + "/" + key + "/" + name;
   const fspath = folder + "/" + name;
+  const vspath = fspath + ".version";
 
   const bucket = new GridFSBucket(await connect());
-  const exists = await bucket.find({ filename: dbpath }).hasNext();
+  const cursor = bucket.find({ filename: dbpath });
+  const exists = await cursor.hasNext();
 
   if (!exists) return false;
+
+  const record = await cursor.next();
+  const version = record.metadata?.version || 1;
+
+  // Check if we can skip download based on version marker
+  if (fs.existsSync(fspath) && fs.existsSync(vspath) && (fs.readFileSync(vspath, "utf-8").trim() === String(version))) {
+    return true;
+  }
 
   if (fs.existsSync(fspath)) {
     fs.unlinkSync(fspath);
@@ -44,7 +54,14 @@ export async function downloadFile(kind, key, name, folder) {
 
   await pipelineAsync(source.pipe(target));
 
-  return fs.existsSync(fspath);
+  const saved = fs.existsSync(fspath);
+
+  // Store version marker after successful download
+  if (saved) {
+    fs.writeFileSync(vspath, String(version));
+  }
+
+  return saved;
 }
 
 export async function uploadFile(kind, key, name, folder) {
@@ -54,13 +71,13 @@ export async function uploadFile(kind, key, name, folder) {
   if (!fs.existsSync(fspath)) return false;
 
   const bucket = new GridFSBucket(await connect());
-  const metadata = { metadata: { kind, key, name } };
-  const target = bucket.openUploadStream(dbpath, metadata);
+  const version = Date.now();
+  const target = bucket.openUploadStream(dbpath, { metadata: { kind, key, name, version } });
   const source = fs.createReadStream(fspath);
 
   // Find previously uploaded files for the same kind, key, and name
   const remove = [];
-  for await (const file of bucket.find(metadata)) {
+  for await (const file of bucket.find({ "metadata.kind": kind, "metadata.key": key, "metadata.name": name })) {
     remove.push(file._id);
   }
 

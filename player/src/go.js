@@ -1,5 +1,5 @@
 import Brain from "@norman-gym/brain/Brain.js";
-import { loadBrain } from "@norman-gym/bank/brains.js";
+import { downloadModel } from "@norman-gym/bank/brains.js";
 import { sendEvent, watchEvents } from "@norman-gym/bank/events.js";
 import loadSkill from "@norman-gym/bank/skills.js";
 
@@ -38,7 +38,8 @@ async function readBrain(name) {
     const skill = await loadSkill(skillUrl);
     const brain = new Brain(skill, BRAIN_CONFIG);
 
-    if (await loadBrain(name, STORE_FOLDER)) {
+    // TODO: Download brain.tf instead and load as norman would
+    if (await downloadModel(name, STORE_FOLDER)) {
       await brain.load(STORE_FOLDER);
     } else {
       brain.init();

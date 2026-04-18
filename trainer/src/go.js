@@ -2,7 +2,7 @@ import Brain from "@norman-gym/brain/Brain.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
 import loadSkill from "@norman-gym/bank/skills.js";
 import { readAssignment } from "@norman-gym/bank/assignments.js";
-import { loadBrain, saveBrain } from "@norman-gym/bank/brains.js";
+import { downloadModel, uploadModel } from "@norman-gym/bank/brains.js";
 import { writeProgress } from "@norman-gym/bank/progress.js";
 import resources from "./resources.js";
 
@@ -30,7 +30,7 @@ async function go() {
 
       if (loss.overall < record.overall) {
         await brain.save(STORE_FOLDER);
-        await saveBrain(assignment.brain, STORE_FOLDER, skill.url, loss.overall);
+        await uploadModel(assignment.brain, STORE_FOLDER, loss.overall);
 
         record = loss;
       }
@@ -59,7 +59,7 @@ async function startSession(assignment) {
   if (!brain) {
     brain = new Brain(skill, config);
 
-    if (await loadBrain(assignment.brain, STORE_FOLDER)) {
+    if (await downloadModel(assignment.brain, STORE_FOLDER)) {
       await brain.load(STORE_FOLDER);
     } else {
       brain.init();

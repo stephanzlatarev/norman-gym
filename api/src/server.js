@@ -2,7 +2,7 @@ import bodyParser from "body-parser";
 import express from "express";
 import { list, stats } from "@norman-gym/bank/db.js";
 import { downloadBrain, FILE_BRAIN } from "@norman-gym/bank/brains.js";
-import { sendEvent } from "@norman-gym/bank/events.js";
+import { consumeEvent, sendEvent } from "@norman-gym/bank/events.js";
 
 const port = process.env.PORT || 3000;
 const app = express();
@@ -34,6 +34,21 @@ app.get("/api/bank/stats", async (_, response) => {
 
 app.get("/api/events", listItems("events")); // TODO: List events since given time
 app.post("/api/events", postItem(sendEvent));
+app.delete("/api/events/:ref", async (request, response) => {
+  try {
+    const { ref } = request.params;
+
+    if (!ref) {
+      return sendError(response, { status: "ERROR", details: "Event ref is required" });
+    }
+
+    await consumeEvent({ ref });
+
+    return sendResponse(response, { status: "OK", details: { ref } });
+  } catch (error) {
+    return sendError(response, { status: "ERROR", details: error?.message || error });
+  }
+});
 
 export const server = app.listen(port, () => {
   console.log(`Server successfully started on ${port}`);

@@ -25,6 +25,7 @@ export default class Simulator extends React.Component {
 
   componentWillUnmount() {
     Api.listen(this);
+    if (this.state.step) Api.delete("events", this.state.step);
   }
 
   updateObservation(event) {
@@ -73,6 +74,10 @@ export default class Simulator extends React.Component {
 }
 
 async function step() {
+  if (this.state.step) {
+    await Api.delete("events", this.state.step);
+  }
+
   const step = String(Math.random());
   const observation = merge(this.state.observation);
 

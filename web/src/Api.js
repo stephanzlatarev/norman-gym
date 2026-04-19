@@ -34,6 +34,18 @@ class Api {
     }
   }
 
+  async delete(...path) {
+    try {
+      const response = await axios.delete(this.url(...path));
+
+      if (response.status === 200) {
+        return response.data;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   listen(component, entity) {
     if (entity) {
       let entities = listeners.get(component);

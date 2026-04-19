@@ -32,6 +32,20 @@ export async function list(name, filter) {
   return await list.find(filter).toArray();
 }
 
+export async function stats() {
+  return {
+    documents: {
+      assignments: await (await collection("assignments")).countDocuments(),
+      brains: await (await collection("brains")).countDocuments(),
+      events: await (await collection("events")).countDocuments(),
+      progress: await (await collection("progress")).countDocuments(),
+    },
+    files: {
+      brains: await (await collection("fs.files")).countDocuments({ "metadata.kind": "brain" }),
+    },
+  };
+}
+
 export async function downloadFile(kind, key, name, folder) {
   const dbpath = kind + "/" + key + "/" + name;
   const fspath = folder + "/" + name;

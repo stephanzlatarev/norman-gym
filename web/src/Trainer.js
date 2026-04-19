@@ -5,6 +5,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Progress from "./Progress";
+import Samples from "./Samples";
 
 export default class Trainer extends React.Component {
 
@@ -101,7 +102,7 @@ export default class Trainer extends React.Component {
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
-          Samples
+          <Samples brain={ trainer.brain } />
         </Paper>
 
       </Stack>

@@ -1,60 +1,50 @@
 import Brain from "@norman-gym/brain/Brain.js";
-import { downloadModel } from "@norman-gym/bank/brains.js";
+import { readBrain, downloadModel } from "@norman-gym/bank/brains.js";
 import { sendEvent, watchEvents } from "@norman-gym/bank/events.js";
+import createSamples from "@norman-gym/brain/ops/samples.js";
 import loadSkill from "@norman-gym/bank/skills.js";
 
-const STORE_FOLDER = process.cwd();
-const SKILL_BASE_URL = process.env.SKILL_BASE_URL || "https://github.com/stephanzlatarev/test/gym/skill";
-const BRAIN_CONFIG = {
-  attributeWidth: 64,
-  objectWidth: 128,
-  brainWidth: 512,
-  brainLayers: 2,
-  attentionHeads: 8,
-  attentionGroups: 2,
-  dropoutRate: 0.1,
-  batchSize: 100,
-};
+let player;
 
-const cache = new Map();
-
-async function play({ type, uuid, brain, observe }) {
+async function play({ type, ref, brain, observation }) {
   try {
-    const act = (await readBrain(brain)).decide(observe);
+    await getBrain(brain);
 
-    await sendEvent({ type: "display", uuid, brain, observe, act });
-  } catch (cause) {
-    console.log("Failed to process event", type, uuid, cause?.message || cause);
-  }
-}
+    let expected = {};
 
-async function readBrain(name) {
-  const skillUrl = `${SKILL_BASE_URL}/${name}`;
-  const cached = cache.get(name);
-  const skillChanged = cached?.skillUrl !== skillUrl;
-  const configChanged = JSON.stringify(cached?.config) !== JSON.stringify(BRAIN_CONFIG);
-
-  if (!cached || skillChanged || configChanged) {
-    const skill = await loadSkill(skillUrl);
-    const brain = new Brain(name, BRAIN_CONFIG, skill);
-
-    // TODO: Download brain.tf instead and load as norman would
-    if (await downloadModel(name, STORE_FOLDER)) {
-      await brain.load(STORE_FOLDER);
-    } else {
-      brain.init();
+    if (!observation) {
+      // Generate random sample
+      const samples = createSamples(player.skill.playbooks, 1);
+      observation = samples[0].observe;
+      expected = samples[0].act;
     }
 
-    cache.set(name, {
-      brain,
-      config: BRAIN_CONFIG,
-      skillUrl,
-    });
+    const action = player.decide(observation);
 
-    return brain;
+    await sendEvent({ type: "simulation-display", ref, brain, observation, expected, action });
+  } catch (cause) {
+    console.log("Failed to process event", type, "(" + ref + ")", cause?.message || cause);
+    console.log(cause);
   }
-
-  return cached.brain;
 }
 
-watchEvents("play", play);
+async function getBrain(name) {
+  if (player) return;
+
+  const folder = process.cwd();
+  const metadata = await readBrain(name);
+  const skill = await loadSkill(metadata.skill);
+
+  player = new Brain(name, metadata.config, skill);
+
+  // TODO: Download brain.tf instead and load as norman would
+  if (await downloadModel(name, folder)) {
+    await player.load(folder);
+  } else {
+    player.init();
+  }
+
+  return player;
+}
+
+watchEvents("simulation-step", play);

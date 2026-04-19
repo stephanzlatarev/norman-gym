@@ -6,7 +6,7 @@ import loadSkill from "@norman-gym/bank/skills.js";
 
 let player;
 
-async function play({ type, ref, brain, observation }) {
+async function play({ type, ref, brain, observation, preference }) {
   try {
     await getBrain(brain);
 
@@ -14,9 +14,9 @@ async function play({ type, ref, brain, observation }) {
 
     if (!observation) {
       // Generate random sample
-      const samples = createSamples(player.skill.playbooks, 1);
-      observation = samples[0].observe;
-      expected = samples[0].act;
+      const sample = await getSample(preference);
+      observation = sample.observe;
+      expected = sample.act;
     }
 
     const action = player.decide(observation);
@@ -45,6 +45,35 @@ async function getBrain(name) {
   }
 
   return player;
+}
+
+async function getSample(preference) {
+  switch (preference) {
+    case "worst": return getWorstSample();
+    default: return getRandomSample();
+  }
+}
+
+function getRandomSample() {
+  return createSamples(player.skill.playbooks, 1)[0];
+}
+
+async function getWorstSample() {
+  const samples = createSamples(player.skill.playbooks, 100);
+
+  let worstSample = null;
+  let maxLoss = -Infinity;
+
+  for (const sample of samples) {
+    const loss = player.measure([sample]);
+
+    if (loss > maxLoss) {
+      maxLoss = loss;
+      worstSample = sample;
+    }
+  }
+
+  return worstSample;
 }
 
 watchEvents("simulation-step", play);

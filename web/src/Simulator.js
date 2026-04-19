@@ -1,6 +1,7 @@
 import React from "react";
 import Button from "@mui/material/Button";
 import IconSkipNext from "@mui/icons-material/SkipNext";
+import IconTrendingDown from "@mui/icons-material/TrendingDown";
 import LinearProgress from "@mui/material/LinearProgress";
 import Api from "./Api";
 import Board from "./Board";
@@ -33,12 +34,12 @@ export default class Simulator extends React.Component {
   }
 
   render() {
-    const simulation = this.state.events.find(event => event.ref === this.state.step);
+    const simulation = this.state.events.find(event => ((event.type === "simulation-display") && (event.ref === this.state.step)));
     const progressing = this.state.step && !simulation;
 
     if (simulation && (this.state.merged !== this.state.step)) {
       this.state.simulation = simulation;
-      this.state.observation = JSON.stringify(merge(this.state.observation, simulation.action), null, 2);
+      this.state.observation = pretty(merge(simulation.observation, simulation.action), null, 2);
       this.state.merged = this.state.step;
     }
 
@@ -51,6 +52,10 @@ export default class Simulator extends React.Component {
 
         <Button size="small" onClick={ step.bind(this) } disabled={ progressing }>
           <IconSkipNext /> Step
+        </Button>
+
+        <Button size="small" onClick={ worst.bind(this) } disabled={ progressing }>
+          <IconTrendingDown /> Worst
         </Button>
 
         { progressing && <LinearProgress /> }
@@ -86,9 +91,21 @@ async function step() {
   this.setState({ step });
 }
 
+async function worst() {
+  if (this.state.step) {
+    await Api.delete("events", this.state.step);
+  }
+
+  const step = String(Math.random());
+
+  await Api.post({ ref: step, brain: "tic-tac-toe", type: "simulation-step", preference: "worst" }, "events");
+
+  this.setState({ step });
+}
+
 function merge(observation, action) {
   try {
-    const simulation = JSON.parse(observation);
+    const simulation = (typeof(observation) === "string") ? JSON.parse(observation) : observation;
 
     if (action) {
       for (const [type, objects] of Object.entries(action)) {
@@ -103,4 +120,18 @@ function merge(observation, action) {
     return simulation;
   } catch {
   }
+}
+
+function pretty(object) {
+  let text = JSON.stringify(object, null, 2);
+
+  // Only inline arrays of primitives (no nested objects or arrays)
+  text = text.replace(/\[\s*\n(\s*)([^\[\{]*?)\n\s*\]/gs, (match, indent, content) => {
+    if (!content.includes('{') && !content.includes('[')) {
+      return "[" + content.trim().replace(/,\s*\n\s*/g, ", ") + "]";
+    }
+    return match;
+  });
+
+  return text;
 }

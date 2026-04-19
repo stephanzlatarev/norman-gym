@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "@mui/material/Button";
-import IconRefresh from "@mui/icons-material/Refresh";
+import IconSkipNext from "@mui/icons-material/SkipNext";
 import LinearProgress from "@mui/material/LinearProgress";
 import Api from "./Api";
 import Board from "./Board";
@@ -15,6 +15,7 @@ export default class Simulator extends React.Component {
       step: null,
       merged: null,
       observation: JSON.stringify({}, null, 2),
+      simulation: null,
     };
   }
 
@@ -35,6 +36,7 @@ export default class Simulator extends React.Component {
     const progressing = this.state.step && !simulation;
 
     if (simulation && (this.state.merged !== this.state.step)) {
+      this.state.simulation = simulation;
       this.state.observation = JSON.stringify(merge(this.state.observation, simulation.action), null, 2);
       this.state.merged = this.state.step;
     }
@@ -47,7 +49,7 @@ export default class Simulator extends React.Component {
         <br/>
 
         <Button size="small" onClick={ step.bind(this) } disabled={ progressing }>
-          <IconRefresh />
+          <IconSkipNext /> Step
         </Button>
 
         { progressing && <LinearProgress /> }
@@ -62,7 +64,7 @@ export default class Simulator extends React.Component {
           </div>
 
           <div style={{ flex: "1 1 20rem", minWidth: "18rem" }}>
-            { simulation && <Board simulation={ simulation } /> }
+            { this.state.simulation && <Board simulation={ this.state.simulation } /> }
           </div>
         </div>
       </div>

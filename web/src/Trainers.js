@@ -3,7 +3,6 @@ import Stack from "@mui/material/Stack";
 import Api from "./Api";
 import Trainer from "./Trainer";
 
-let id = 1;
 export default class Trainers extends React.Component {
 
   constructor() {

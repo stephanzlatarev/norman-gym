@@ -2,7 +2,7 @@ import React from "react";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
-import Brains from "./Brains";
+import Bank from "./Bank";
 import Trainers from "./Trainers";
 
 export default class App extends React.Component {
@@ -23,7 +23,7 @@ export default class App extends React.Component {
     return (
       <Tabs value={ this.state.tab } onChange={ this.onTabChange.bind(this) }>
         <Tab label="Trainers" />
-        <Tab label="Brains" />
+        <Tab label="Bank" />
       </Tabs>
     );
   }
@@ -31,7 +31,7 @@ export default class App extends React.Component {
   renderView() {
     switch (this.state.tab) {
       case 0: return (<Trainers />);
-      case 1: return (<Brains />);
+      case 1: return (<Bank />);
       default: return (<div>Oooops! Refresh the page, please!</div>);
     }
   }

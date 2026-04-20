@@ -12,8 +12,8 @@ app.disable("x-powered-by");
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.get("/api/assignments", listItems("assignments"));
 app.get("/api/progress", listItems("progress"));
+app.get("/api/trainers", listItems("trainers"));
 
 app.get("/api/brains", listItems("brains"));
 app.get("/api/brains/:brain/download", async (request, response) => {

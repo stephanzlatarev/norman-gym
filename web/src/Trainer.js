@@ -26,7 +26,9 @@ export default class Trainer extends React.Component {
     const progress = this.props.trainer.progress;
     if (!progress.length) return;
 
-    const point = progress[progress.length - 1] || { loss: { overall: 0 } };
+    const point = progress[progress.length - 1] || {};
+    if (!point.loss) point.loss = { overall: 0 };
+
     const labels = Object.keys(point.loss);
     const tab = labels.indexOf("overall");
 

@@ -2,6 +2,9 @@ import React from "react";
 import Stack from "@mui/material/Stack";
 import Api from "./Api";
 
+const CENTER = { textAlign: "center", padding: "8px" };
+const LEFT = { textAlign: "left", padding: "8px" };
+
 export default class Bank extends React.Component {
 
   constructor() {
@@ -9,11 +12,13 @@ export default class Bank extends React.Component {
 
     this.state = {
       brains: [],
+      trainers: [],
     };
   }
 
   async componentDidMount() {
     Api.listen(this, "brains");
+    Api.listen(this, "trainers");
     Api.listen(this, "bank/stats");
   }
 
@@ -26,6 +31,8 @@ export default class Bank extends React.Component {
       <div style={{ margin: "1rem" }}>
         <h3>Brains</h3>
         { renderBrains(this) }
+        <h3>Trainers</h3>
+        { renderTrainers(this) }
         <h3>Stats</h3>
         { renderStats(this) }
       </div>
@@ -44,6 +51,55 @@ function renderBrains(component) {
     <Stack spacing={2} direction="column" margin={{ xs: "0rem", sm: "1rem" }}>
       { brains }
     </Stack>
+  );
+}
+
+function orderByNameIndex(list, name) {
+  for (const one of list) {
+    const parts = one[name].split("-");
+
+    try {
+      const number = Number(parts[parts.length - 1]);
+      one.index = (number >= 0) ? number : Infinity;
+    } catch {
+      one.index = Infinity;
+    }
+  }
+
+  list.sort((a, b) => (a.index - b.index));
+
+  return list;
+}
+
+function renderTrainers(component) {
+  const trainers = orderByNameIndex(component.state.trainers, "trainer");
+  const rows = trainers.map(one => (
+    <tr key={ one.trainer }>
+      <td style={ LEFT }>{ one.trainer }</td>
+      <td style={ CENTER }>{ one.brain }</td>
+      <td style={ LEFT }>{ one.skill }</td>
+      <td style={ CENTER }>{ one.trainBatchSize }</td>
+      <td style={ CENTER }>{ one.dropoutRate }</td>
+      <td style={ CENTER }>{ one.measureBatchSize }</td>
+    </tr>
+  ));
+
+  return (
+    <table style={{ borderCollapse: "collapse", width: "100%" }}>
+      <thead>
+        <tr style={{ borderBottom: "2px solid #ccc" }}>
+          <th style={ LEFT }>Trainer</th>
+          <th style={ CENTER }>Brain</th>
+          <th style={ LEFT }>Skill</th>
+          <th style={ CENTER }>Training batch size</th>
+          <th style={ CENTER }>Dropout rate</th>
+          <th style={ CENTER }>Measure batch size</th>
+        </tr>
+      </thead>
+      <tbody>
+        { rows }
+      </tbody>
+    </table>
   );
 }
 

@@ -9,13 +9,13 @@ export default class Trainers extends React.Component {
     super();
 
     this.state = {
-      assignments: [],
+      trainers: [],
       progress: [],
     };
   }
 
   async componentDidMount() {
-    Api.listen(this, "assignments");
+    Api.listen(this, "trainers");
     Api.listen(this, "progress");
   }
 
@@ -26,8 +26,8 @@ export default class Trainers extends React.Component {
   render() {
     const trainers = new Map();
 
-    for (const assignment of this.state.assignments) {
-      trainers.set(assignment.trainer, { ...assignment, progress: [] });
+    for (const one of this.state.trainers) {
+      trainers.set(one.trainer, { ...one, progress: [] });
     }
 
     for (const point of this.state.progress) {
@@ -39,6 +39,7 @@ export default class Trainers extends React.Component {
     }
 
     const list = Array.from(trainers.values())
+      .filter(one => !!one.brain)
       .sort((a, b) => a.trainer.localeCompare(b.trainer))
       .map(one => (
         <Trainer key={ one.trainer } trainer={ one } />

@@ -35,10 +35,10 @@ export async function list(name, filter) {
 export async function stats() {
   return {
     documents: {
-      assignments: await (await collection("assignments")).countDocuments(),
       brains: await (await collection("brains")).countDocuments(),
       events: await (await collection("events")).countDocuments(),
       progress: await (await collection("progress")).countDocuments(),
+      trainers: await (await collection("trainers")).countDocuments(),
     },
     files: {
       brains: await (await collection("fs.files")).countDocuments({ "metadata.kind": "brain" }),

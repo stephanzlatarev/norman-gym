@@ -1,14 +1,15 @@
 import Brain from "@norman-gym/brain/Brain.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
 import loadSkill from "@norman-gym/bank/skills.js";
-import { readAssignment } from "@norman-gym/bank/assignments.js";
 import { readBrain, downloadModel, uploadModel } from "@norman-gym/bank/brains.js";
 import { writeProgress } from "@norman-gym/bank/progress.js";
+import { readTrainer, writeTrainer } from "@norman-gym/bank/trainers.js";
 import resources from "./resources.js";
 
 const TRAINER_NAME = process.env.HOSTNAME;
 const SESSION_SECONDS = 60;
 const SESSION_MILLIS = SESSION_SECONDS * 1000;
+const DEFAULT_DROPOUT_RATE = 0.1;
 const DEFAULT_TRAINING_BATCH_SIZE = 100;
 const DEFAULT_MEASURE_BATCH_SIZE = 1000;
 const STORE_FOLDER = process.cwd();
@@ -20,11 +21,15 @@ let record;
 let time;
 
 async function go() {
-  while (true) {
-    const assignment = await readAssignment(TRAINER_NAME);
+  await writeTrainer(TRAINER_NAME, {});
 
-    if (assignment) {
-      await startSession(assignment);
+  while (true) {
+    const config = await readTrainer(TRAINER_NAME);
+
+    if (config && config.brain) {
+      syncConfiguration(config);
+
+      await startSession(config);
 
       brain.train(createSamples(skill.playbooks, config.trainBatchSize), SESSION_SECONDS);
 
@@ -33,7 +38,7 @@ async function go() {
       if (loss.overall < record.overall) {
         await brain.save(STORE_FOLDER);
 
-        time = await uploadModel(assignment.brain, STORE_FOLDER, loss.overall);
+        time = await uploadModel(config.brain, STORE_FOLDER, loss.overall);
         record = loss;
       }
 
@@ -45,26 +50,29 @@ async function go() {
   }
 }
 
-async function startSession(assignment) {
-  syncConfiguration(assignment);
-
-  const metadata = await readBrain(assignment.brain);
+async function startSession() {
+  const metadata = await readBrain(config.brain);
   console.log("Brain:", JSON.stringify(metadata));
 
   const reloadBrain = shouldReloadBrain(metadata);
   const reloadSkill = reloadBrain || shouldReloadSkill(metadata);
 
   if (reloadSkill) {
-    skill = await loadSkill(assignment.skill);
+    skill = await loadSkill(config.skill);
 
     console.log("Skill:", JSON.stringify(skill));
   }
 
   if (reloadBrain) {
-    brain = new Brain(metadata.brain, config, skill);
+    const training = {
+      ...metadata.config,
+      dropoutRate: config.dropoutRate,
+    };
+
+    brain = new Brain(config.brain, training, skill);
     record = null;
 
-    if (await downloadModel(metadata.brain, STORE_FOLDER)) {
+    if (await downloadModel(config.brain, STORE_FOLDER)) {
       await brain.load(STORE_FOLDER);
     } else {
       brain.init();
@@ -79,13 +87,17 @@ async function startSession(assignment) {
   }
 }
 
-function syncConfiguration(assignment) {
+function syncConfiguration(expectedConfig) {
   const messages = [];
-  const expectedConfig = { ...assignment.config };
 
   if (!expectedConfig.trainBatchSize) {
     messages.push("Using default training batch size");
     expectedConfig.trainBatchSize = DEFAULT_TRAINING_BATCH_SIZE;
+  }
+
+  if (!expectedConfig.dropoutRate) {
+    messages.push("Using default dropout rate");
+    expectedConfig.dropoutRate = DEFAULT_DROPOUT_RATE;
   }
 
   if (!expectedConfig.measureBatchSize) {
@@ -95,13 +107,15 @@ function syncConfiguration(assignment) {
 
   if (JSON.stringify(config) !== JSON.stringify(expectedConfig)) {
     console.log("===========");
-    console.log("Assignment:", JSON.stringify(assignment));
+    console.log("Configuration:", JSON.stringify(expectedConfig));
 
     config = expectedConfig;
 
     for (const message of messages) {
       console.log(message);
     }
+
+    writeTrainer(TRAINER_NAME, config);
   }
 }
 

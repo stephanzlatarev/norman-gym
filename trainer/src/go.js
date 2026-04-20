@@ -10,6 +10,8 @@ const TRAINER_NAME = process.env.HOSTNAME;
 const SESSION_SECONDS = 60;
 const SESSION_MILLIS = SESSION_SECONDS * 1000;
 const DEFAULT_DROPOUT_RATE = 0.1;
+const DEFAULT_LEARNING_RATE = 0.001;
+const DEFAULT_CLIP_NORM = 1.0;
 const DEFAULT_TRAINING_BATCH_SIZE = 100;
 const DEFAULT_MEASURE_BATCH_SIZE = 1000;
 const STORE_FOLDER = process.cwd();
@@ -52,7 +54,6 @@ async function go() {
 
 async function startSession() {
   const metadata = await readBrain(config.brain);
-  console.log("Brain:", JSON.stringify(metadata));
 
   const reloadBrain = shouldReloadBrain(metadata);
   const reloadSkill = reloadBrain || shouldReloadSkill(metadata);
@@ -67,14 +68,18 @@ async function startSession() {
     const training = {
       ...metadata.config,
       dropoutRate: config.dropoutRate,
+      learningRate: config.learningRate,
+      clipNorm: config.clipNorm,
     };
 
     brain = new Brain(config.brain, training, skill);
     record = null;
 
     if (await downloadModel(config.brain, STORE_FOLDER)) {
+      console.log("Loading brain:", JSON.stringify(metadata));
       await brain.load(STORE_FOLDER);
     } else {
+      console.log("Initializing brain:", JSON.stringify(metadata));
       brain.init();
     }
   }
@@ -103,6 +108,16 @@ function syncConfiguration(expectedConfig) {
   if (!expectedConfig.measureBatchSize) {
     messages.push("Using default measurement batch size");
     expectedConfig.measureBatchSize = DEFAULT_MEASURE_BATCH_SIZE;
+  }
+
+  if (!expectedConfig.learningRate) {
+    messages.push("Using default learning rate");
+    expectedConfig.learningRate = DEFAULT_LEARNING_RATE;
+  }
+
+  if (!expectedConfig.clipNorm) {
+    messages.push("Using default clip norm");
+    expectedConfig.clipNorm = DEFAULT_CLIP_NORM;
   }
 
   if (JSON.stringify(config) !== JSON.stringify(expectedConfig)) {

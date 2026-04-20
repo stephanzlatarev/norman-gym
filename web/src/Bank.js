@@ -74,32 +74,56 @@ function renderBrains(component) {
   );
 }
 
-function editTrainer(component, trainer, trainBatchSize) {
-  component.setState({ editingTrainer: trainer, editingTrainBatchSize: String(trainBatchSize ?? "") });
+function editTrainer(component, trainer, trainBatchSize, dropoutRate, learningRate, clipNorm) {
+  component.setState({ 
+    editingTrainer: trainer, 
+    editingTrainBatchSize: String(trainBatchSize ?? ""),
+    editingDropoutRate: String(dropoutRate ?? ""),
+    editingLearningRate: String(learningRate ?? ""),
+    editingClipNorm: String(clipNorm ?? "")
+  });
 }
 
 function changeTrainBatchSize(component, event) {
   component.setState({ editingTrainBatchSize: event.target.value });
 }
 
+function changeDropoutRate(component, event) {
+  component.setState({ editingDropoutRate: event.target.value });
+}
+
+function changeLearningRate(component, event) {
+  component.setState({ editingLearningRate: event.target.value });
+}
+
+function changeClipNorm(component, event) {
+  component.setState({ editingClipNorm: event.target.value });
+}
+
 async function saveTrainer(component, trainer) {
   const trainBatchSize = Number(component.state.editingTrainBatchSize);
+  const dropoutRate = Number(component.state.editingDropoutRate);
+  const learningRate = Number(component.state.editingLearningRate);
+  const clipNorm = Number(component.state.editingClipNorm);
 
-  if (!Number.isFinite(trainBatchSize)) {
+  if (!Number.isFinite(trainBatchSize) || !Number.isFinite(dropoutRate) || !Number.isFinite(learningRate) || !Number.isFinite(clipNorm)) {
     return;
   }
 
   component.setState({ savingTrainer: true });
 
-  const response = await Api.post({ trainBatchSize }, "trainers", trainer);
+  const response = await Api.post({ trainBatchSize, dropoutRate, learningRate, clipNorm }, "trainers", trainer);
   const saved = response?.status === "OK";
 
   component.setState(state => ({
     editingTrainer: null,
     editingTrainBatchSize: "",
+    editingDropoutRate: "",
+    editingLearningRate: "",
+    editingClipNorm: "",
     savingTrainer: false,
     trainers: saved ? state.trainers.map(one => (
-      (one.trainer === trainer) ? { ...one, trainBatchSize } : one
+      (one.trainer === trainer) ? { ...one, trainBatchSize, dropoutRate, learningRate, clipNorm } : one
     )) : state.trainers,
   }));
 }
@@ -119,10 +143,61 @@ function renderTrainerTrainBatchSize(component, trainer) {
   return trainer.trainBatchSize;
 }
 
+function renderTrainerDropoutRate(component, trainer) {
+  if (component.state.editingTrainer === trainer.trainer) {
+    return (
+      <input
+        type="text"
+        value={ component.state.editingDropoutRate }
+        onChange={ event => changeDropoutRate(component, event) }
+        style={ INPUT }
+      />
+    );
+  }
+
+  return trainer.dropoutRate;
+}
+
+function renderTrainerLearningRate(component, trainer) {
+  if (component.state.editingTrainer === trainer.trainer) {
+    return (
+      <input
+        type="text"
+        value={ component.state.editingLearningRate }
+        onChange={ event => changeLearningRate(component, event) }
+        style={ INPUT }
+      />
+    );
+  }
+
+  return trainer.learningRate;
+}
+
+function renderTrainerClipNorm(component, trainer) {
+  if (component.state.editingTrainer === trainer.trainer) {
+    return (
+      <input
+        type="text"
+        value={ component.state.editingClipNorm }
+        onChange={ event => changeClipNorm(component, event) }
+        style={ INPUT }
+      />
+    );
+  }
+
+  return trainer.clipNorm;
+}
+
 function renderTrainerActions(component, trainer) {
   const editingTrainer = component.state.editingTrainer;
   const editingTrainBatchSize = component.state.editingTrainBatchSize;
+  const editingDropoutRate = component.state.editingDropoutRate;
+  const editingLearningRate = component.state.editingLearningRate;
+  const editingClipNorm = component.state.editingClipNorm;
   const savingTrainer = component.state.savingTrainer;
+
+  const isValidNumber = (str) => Number.isFinite(Number(str));
+  const allFieldsValid = isValidNumber(editingTrainBatchSize) && isValidNumber(editingDropoutRate) && isValidNumber(editingLearningRate) && isValidNumber(editingClipNorm);
 
   if (editingTrainer === trainer.trainer) {
     return (
@@ -130,7 +205,7 @@ function renderTrainerActions(component, trainer) {
         aria-label={ `Save ${trainer.trainer}` }
         size="small"
         onClick={ () => saveTrainer(component, trainer.trainer) }
-        disabled={ savingTrainer || !Number.isFinite(Number(editingTrainBatchSize)) }
+        disabled={ savingTrainer || !allFieldsValid }
       >
         <IconSave fontSize="inherit" />
       </IconButton>
@@ -141,7 +216,7 @@ function renderTrainerActions(component, trainer) {
     <IconButton
       aria-label={ `Edit ${trainer.trainer}` }
       size="small"
-      onClick={ () => editTrainer(component, trainer.trainer, trainer.trainBatchSize) }
+      onClick={ () => editTrainer(component, trainer.trainer, trainer.trainBatchSize, trainer.dropoutRate, trainer.learningRate, trainer.clipNorm) }
     >
       <IconEdit fontSize="inherit" />
     </IconButton>
@@ -175,7 +250,9 @@ function renderTrainers(component) {
       <td style={ CENTER }>{ one.brain }</td>
       <td style={ LEFT }>{ one.skill }</td>
       <td style={ CENTER }>{ renderTrainerTrainBatchSize(component, one) }</td>
-      <td style={ CENTER }>{ one.dropoutRate }</td>
+      <td style={ CENTER }>{ renderTrainerDropoutRate(component, one) }</td>
+      <td style={ CENTER }>{ renderTrainerLearningRate(component, one) }</td>
+      <td style={ CENTER }>{ renderTrainerClipNorm(component, one) }</td>
       <td style={ CENTER }>{ one.measureBatchSize }</td>
       <td style={ CENTER }>{ renderTrainerActions(component, one) }</td>
     </tr>
@@ -190,6 +267,8 @@ function renderTrainers(component) {
           <th style={ LEFT }>Skill</th>
           <th style={ CENTER }>Training batch size</th>
           <th style={ CENTER }>Dropout rate</th>
+          <th style={ CENTER }>Learning rate</th>
+          <th style={ CENTER }>Clip norm</th>
           <th style={ CENTER }>Measure batch size</th>
           <th style={ CENTER }>Actions</th>
         </tr>

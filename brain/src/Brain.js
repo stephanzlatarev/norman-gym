@@ -6,8 +6,6 @@ import { saveModel, loadModel } from "./ops/persist.js";
 import { encodeBatch, encodeObservation, decodeAction, flattenInput, groupOutput } from "./ops/translate.js";
 import "./ops/register.js";
 
-const OPTIMIZER = "adam";
-
 export default class Brain {
 
   constructor(name, config, skill) {
@@ -82,7 +80,7 @@ export default class Brain {
     const result = this.model.evaluate(inputs, targets, { batchSize: samples.length });
 
     const values = Array.isArray(result) ? result : [result];
-    const loss = values[0].dataSync()[0];
+    const loss = values[0].dataSync()[0] / this.meta.outputNames.length;
 
     tf.engine().endScope();
 
@@ -95,8 +93,16 @@ export default class Brain {
 }
 
 function compile(brain) {
+  const optimizer = tf.train.adam(
+    brain.config.learningRate ?? 0.001,
+    undefined,
+    undefined,
+    undefined,
+    brain.config.clipNorm ?? 1.0
+  );
+
   brain.model.compile({
-    optimizer: OPTIMIZER,
+    optimizer: optimizer,
     loss: brain.meta.lossMap,
     lossWeights: undefined,
   });

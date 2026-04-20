@@ -1,10 +1,14 @@
 import React from "react";
+import IconButton from "@mui/material/IconButton";
+import IconEdit from "@mui/icons-material/Edit";
+import IconSave from "@mui/icons-material/Save";
 import Api from "./Api";
 
 const CENTER = { textAlign: "center", padding: "8px" };
 const LEFT = { textAlign: "left", padding: "8px" };
 const TABLE = { borderCollapse: "collapse", width: "100%", marginBottom: "2rem" };
 const HEADER = { borderBottom: "2px solid #ccc" };
+const INPUT = { width: "5rem", padding: "4px 6px" };
 
 export default class Bank extends React.Component {
 
@@ -13,6 +17,9 @@ export default class Bank extends React.Component {
 
     this.state = {
       brains: [],
+      editingTrainBatchSize: "",
+      editingTrainer: null,
+      savingTrainer: false,
       trainers: [],
     };
   }
@@ -67,8 +74,84 @@ function renderBrains(component) {
   );
 }
 
+function editTrainer(component, trainer, trainBatchSize) {
+  component.setState({ editingTrainer: trainer, editingTrainBatchSize: String(trainBatchSize ?? "") });
+}
+
+function changeTrainBatchSize(component, event) {
+  component.setState({ editingTrainBatchSize: event.target.value });
+}
+
+async function saveTrainer(component, trainer) {
+  const trainBatchSize = Number(component.state.editingTrainBatchSize);
+
+  if (!Number.isFinite(trainBatchSize)) {
+    return;
+  }
+
+  component.setState({ savingTrainer: true });
+
+  const response = await Api.post({ trainBatchSize }, "trainers", trainer);
+  const saved = response?.status === "OK";
+
+  component.setState(state => ({
+    editingTrainer: null,
+    editingTrainBatchSize: "",
+    savingTrainer: false,
+    trainers: saved ? state.trainers.map(one => (
+      (one.trainer === trainer) ? { ...one, trainBatchSize } : one
+    )) : state.trainers,
+  }));
+}
+
+function renderTrainerTrainBatchSize(component, trainer) {
+  if (component.state.editingTrainer === trainer.trainer) {
+    return (
+      <input
+        type="text"
+        value={ component.state.editingTrainBatchSize }
+        onChange={ event => changeTrainBatchSize(component, event) }
+        style={ INPUT }
+      />
+    );
+  }
+
+  return trainer.trainBatchSize;
+}
+
+function renderTrainerActions(component, trainer) {
+  const editingTrainer = component.state.editingTrainer;
+  const editingTrainBatchSize = component.state.editingTrainBatchSize;
+  const savingTrainer = component.state.savingTrainer;
+
+  if (editingTrainer === trainer.trainer) {
+    return (
+      <IconButton
+        aria-label={ `Save ${trainer.trainer}` }
+        size="small"
+        onClick={ () => saveTrainer(component, trainer.trainer) }
+        disabled={ savingTrainer || !Number.isFinite(Number(editingTrainBatchSize)) }
+      >
+        <IconSave fontSize="inherit" />
+      </IconButton>
+    );
+  }
+
+  return (
+    <IconButton
+      aria-label={ `Edit ${trainer.trainer}` }
+      size="small"
+      onClick={ () => editTrainer(component, trainer.trainer, trainer.trainBatchSize) }
+    >
+      <IconEdit fontSize="inherit" />
+    </IconButton>
+  );
+}
+
 function orderByNameIndex(list, name) {
-  for (const one of list) {
+  const ordered = list.map(one => ({ ...one }));
+
+  for (const one of ordered) {
     const parts = one[name].split("-");
 
     try {
@@ -79,9 +162,9 @@ function orderByNameIndex(list, name) {
     }
   }
 
-  list.sort((a, b) => (a.index - b.index));
+  ordered.sort((a, b) => (a.index - b.index));
 
-  return list;
+  return ordered;
 }
 
 function renderTrainers(component) {
@@ -91,9 +174,10 @@ function renderTrainers(component) {
       <td style={ LEFT }>{ one.trainer }</td>
       <td style={ CENTER }>{ one.brain }</td>
       <td style={ LEFT }>{ one.skill }</td>
-      <td style={ CENTER }>{ one.trainBatchSize }</td>
+      <td style={ CENTER }>{ renderTrainerTrainBatchSize(component, one) }</td>
       <td style={ CENTER }>{ one.dropoutRate }</td>
       <td style={ CENTER }>{ one.measureBatchSize }</td>
+      <td style={ CENTER }>{ renderTrainerActions(component, one) }</td>
     </tr>
   ));
 
@@ -107,6 +191,7 @@ function renderTrainers(component) {
           <th style={ CENTER }>Training batch size</th>
           <th style={ CENTER }>Dropout rate</th>
           <th style={ CENTER }>Measure batch size</th>
+          <th style={ CENTER }>Actions</th>
         </tr>
       </thead>
       <tbody>

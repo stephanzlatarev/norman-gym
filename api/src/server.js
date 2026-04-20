@@ -3,6 +3,7 @@ import express from "express";
 import { list, stats } from "@norman-gym/bank/db.js";
 import { downloadBrain, FILE_BRAIN } from "@norman-gym/bank/brains.js";
 import { consumeEvent, sendEvent } from "@norman-gym/bank/events.js";
+import { writeTrainer } from "@norman-gym/bank/trainers.js";
 
 const port = process.env.PORT || 3000;
 const app = express();
@@ -14,6 +15,26 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get("/api/progress", listItems("progress"));
 app.get("/api/trainers", listItems("trainers"));
+app.post("/api/trainers/:trainer", async (request, response) => {
+  try {
+    const { trainer } = request.params;
+    const trainBatchSize = Number(request.body?.trainBatchSize);
+
+    if (!trainer) {
+      return sendError(response, { status: "ERROR", details: "Trainer is required" });
+    }
+
+    if (!Number.isFinite(trainBatchSize)) {
+      return sendError(response, { status: "ERROR", details: "trainBatchSize must be a number" });
+    }
+
+    await writeTrainer(trainer, { trainBatchSize });
+
+    return sendResponse(response, { status: "OK" });
+  } catch (error) {
+    return sendError(response, { status: "ERROR", details: error?.message || error });
+  }
+});
 
 app.get("/api/brains", listItems("brains"));
 app.get("/api/brains/:brain/download", async (request, response) => {

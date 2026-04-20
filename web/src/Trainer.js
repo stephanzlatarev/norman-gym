@@ -85,7 +85,7 @@ export default class Trainer extends React.Component {
       <Stack spacing={2} direction={{ xs: "column", sm: "column", md: "row" }} useFlexGap flexWrap="wrap">
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
-          { trainer.trainer } | { trainer.brain }
+          { trainer.trainer } | { trainer.brain } | { trainer.trainBatchSize }
         </Paper>
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>

@@ -1,9 +1,10 @@
 import React from "react";
-import Stack from "@mui/material/Stack";
 import Api from "./Api";
 
 const CENTER = { textAlign: "center", padding: "8px" };
 const LEFT = { textAlign: "left", padding: "8px" };
+const TABLE = { borderCollapse: "collapse", width: "100%", marginBottom: "2rem" };
+const HEADER = { borderBottom: "2px solid #ccc" };
 
 export default class Bank extends React.Component {
 
@@ -29,11 +30,8 @@ export default class Bank extends React.Component {
   render() {
     return (
       <div style={{ margin: "1rem" }}>
-        <h3>Brains</h3>
         { renderBrains(this) }
-        <h3>Trainers</h3>
         { renderTrainers(this) }
-        <h3>Stats</h3>
         { renderStats(this) }
       </div>
     );
@@ -41,16 +39,31 @@ export default class Bank extends React.Component {
 }
 
 function renderBrains(component) {
-  const brains = component.state.brains.map(one => (
-    <div key={ one.brain }>
-      { one.brain } | { new Date(one.time).toLocaleString() } | skill: { one.skill } | loss: { one.loss }
-    </div>
+  const brains = [...component.state.brains]
+    .sort((a, b) => a.brain.localeCompare(b.brain));
+  const rows = brains.map(one => (
+    <tr key={ one.brain }>
+      <td style={ LEFT }>{ one.brain }</td>
+      <td style={ CENTER }>{ new Date(one.time).toLocaleString() }</td>
+      <td style={ LEFT }>{ one.skill }</td>
+      <td style={ CENTER }>{ one.loss }</td>
+    </tr>
   ));
 
   return (
-    <Stack spacing={2} direction="column" margin={{ xs: "0rem", sm: "1rem" }}>
-      { brains }
-    </Stack>
+    <table style={ TABLE }>
+      <thead>
+        <tr style={ HEADER }>
+          <th style={ LEFT }>Brain</th>
+          <th style={ CENTER }>Time</th>
+          <th style={ LEFT }>Skill</th>
+          <th style={ CENTER }>Loss</th>
+        </tr>
+      </thead>
+      <tbody>
+        { rows }
+      </tbody>
+    </table>
   );
 }
 
@@ -85,9 +98,9 @@ function renderTrainers(component) {
   ));
 
   return (
-    <table style={{ borderCollapse: "collapse", width: "100%" }}>
+    <table style={ TABLE }>
       <thead>
-        <tr style={{ borderBottom: "2px solid #ccc" }}>
+        <tr style={ HEADER }>
           <th style={ LEFT }>Trainer</th>
           <th style={ CENTER }>Brain</th>
           <th style={ LEFT }>Skill</th>
@@ -112,19 +125,19 @@ function renderStats(component) {
 
   const rows = Object.keys(stats.documents || {}).map(collection => (
     <tr key={ collection }>
-      <td>{ collection }</td>
-      <td style={{ textAlign: "center", padding: "8px" }}>{ stats.documents?.[collection] || "" }</td>
-      <td style={{ textAlign: "center", padding: "8px" }}>{ stats.files?.[collection] || "" }</td>
+      <td style={ LEFT }>{ collection }</td>
+      <td style={ CENTER }>{ stats.documents?.[collection] || "" }</td>
+      <td style={ CENTER }>{ stats.files?.[collection] || "" }</td>
     </tr>
   ));
 
   return (
-    <table style={{ borderCollapse: "collapse", width: "100%" }}>
+    <table style={ TABLE }>
       <thead>
-        <tr style={{ borderBottom: "2px solid #ccc" }}>
-          <th style={{ textAlign: "left", padding: "8px" }}>Collection</th>
-          <th style={{ textAlign: "center", padding: "8px" }}>Items</th>
-          <th style={{ textAlign: "center", padding: "8px" }}>Files</th>
+        <tr style={ HEADER }>
+          <th style={ LEFT }>Collection</th>
+          <th style={ CENTER }>Items</th>
+          <th style={ CENTER }>Files</th>
         </tr>
       </thead>
       <tbody>

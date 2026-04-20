@@ -27,3 +27,7 @@ spec:
           env:
             - name: VERSION
               value: "0"
+            - name: PROFILE_CPU_UNITS
+              value: "2"
+            - name: PROFILE_RAM_GB
+              value: "4"

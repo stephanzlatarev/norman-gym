@@ -70,7 +70,7 @@ function exponent(progress, indicator) {
     const p = point[indicator];
 
     if (p >= 0) {
-      min = Math.min(min, );
+      min = Math.min(min, p);
       max = Math.max(max, point[indicator]);
     }
   }
@@ -104,7 +104,8 @@ function logt(e) {
 }
 
 function pery(value) {
-  return (value >= 0) ? 5 - Math.min(value * 5, 5) : 0;
+  if (value < 0) return 0;
+  return 5 - Math.min(value * 5, 5);
 }
 
 function pert(y) {

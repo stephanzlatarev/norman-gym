@@ -17,18 +17,26 @@ app.get("/api/progress", listItems("progress"));
 app.get("/api/trainers", listItems("trainers"));
 app.post("/api/trainers/:trainer", async (request, response) => {
   try {
-    const { trainer } = request.params;
-    const trainBatchSize = Number(request.body?.trainBatchSize);
+    const trainer = request.params.trainer;
 
-    if (!trainer) {
-      return sendError(response, { status: "ERROR", details: "Trainer is required" });
+    if (!trainer || !request.body) {
+      return sendError(response, { status: "ERROR", details: "Trainer and configuration are required" });
     }
 
-    if (!Number.isFinite(trainBatchSize)) {
-      return sendError(response, { status: "ERROR", details: "trainBatchSize must be a number" });
+    const config = {};
+    const fields = {
+      trainBatchSize: request.body.trainBatchSize,
+      dropoutRate: request.body.dropoutRate,
+      learningRate: request.body.learningRate,
+      clipNorm: request.body.clipNorm
+    };
+
+    for (const [key, value] of Object.entries(fields)) {
+      const num = Number(value);
+      if (Number.isFinite(num)) config[key] = num;
     }
 
-    await writeTrainer(trainer, { trainBatchSize });
+    await writeTrainer(trainer, config);
 
     return sendResponse(response, { status: "OK" });
   } catch (error) {

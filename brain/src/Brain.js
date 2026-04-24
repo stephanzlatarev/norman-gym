@@ -42,7 +42,7 @@ export default class Brain {
       const flatInputs = flattenInput(this.meta, input);
       const flatOutputs = this.model.predict(flatInputs);
       const pred = groupOutput(this.meta, this.skill, flatOutputs);
-      return decodeAction(this.meta, this.skill, pred);
+      return decodeAction(this.meta, this.skill, pred, observation);
     });
   }
 

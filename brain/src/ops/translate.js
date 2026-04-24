@@ -92,7 +92,7 @@ export function encodeBatch(meta, skill, samples) {
   return [...flatInputs, ...flatTargets];
 }
 
-export function decodeAction(meta, skill, pred) {
+export function decodeAction(meta, skill, pred, observation = {}) {
   const result = {};
 
   for (const group of meta.groups) {
@@ -103,8 +103,13 @@ export function decodeAction(meta, skill, pred) {
       attrData[attr.name] = pred[group.name][attr.name].dataSync();
     }
 
+    const observedObjects = observation[group.name] || [];
+    const observedCount = Array.isArray(observedObjects) ? observedObjects.length : 0;
+    const modifyCount = group.modify ? Math.min(observedCount, group.limit) : 0;
+    const tupleCount = modifyCount + group.create;
+
     const tuples = [];
-    for (let i = 0; i < group.outputObjects; i++) {
+    for (let i = 0; i < tupleCount; i++) {
       const tuple = [];
       for (const attr of group.actAttributes) {
         if (attr.type === "label") {
@@ -116,7 +121,7 @@ export function decodeAction(meta, skill, pred) {
           }
           tuple.push(attr.options[maxIdx]);
         } else if (attr.type === "space") {
-          tuple.push(Math.round(attrData[attr.name][i]));
+          tuple.push(attrData[attr.name][i]);
         } else {
           tuple.push(attrData[attr.name][i]);
         }

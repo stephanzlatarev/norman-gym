@@ -2,7 +2,7 @@ import Brain from "@norman-gym/brain/Brain.js";
 import { readBrain, downloadModel } from "@norman-gym/bank/brains.js";
 import { sendEvent, watchEvents } from "@norman-gym/bank/events.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
-import loadSkill from "@norman-gym/bank/skills.js";
+import { getSkill } from "@norman-gym/bank/skills.js";
 
 let player;
 
@@ -21,7 +21,7 @@ async function play({ type, ref, brain, observation, preference }) {
 
     const action = player.decide(observation);
 
-    await sendEvent({ type: "simulation-display", ref, brain, observation, expected, action });
+    await sendEvent({ type: "simulation-display", ref, skill: player.skill.url, brain, observation, expected, action });
   } catch (cause) {
     console.log("Failed to process event", type, "(" + ref + ")", cause?.message || cause);
     console.log(cause);
@@ -33,7 +33,7 @@ async function getBrain(name) {
 
   const folder = process.cwd();
   const metadata = await readBrain(name);
-  const skill = await loadSkill(metadata.skill);
+  const skill = await getSkill(metadata.skill);
 
   player = new Brain(name, metadata.config, skill);
 

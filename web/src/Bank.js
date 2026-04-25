@@ -2,6 +2,7 @@ import React from "react";
 import IconButton from "@mui/material/IconButton";
 import IconEdit from "@mui/icons-material/Edit";
 import IconSave from "@mui/icons-material/Save";
+import IconSync from "@mui/icons-material/Sync";
 import Api from "./Api";
 
 const CENTER = { textAlign: "center", padding: "8px" };
@@ -21,12 +22,14 @@ export default class Bank extends React.Component {
       editingTrainer: null,
       savingTrainer: false,
       trainers: [],
+      skills: [],
     };
   }
 
   async componentDidMount() {
     Api.listen(this, "brains");
     Api.listen(this, "trainers");
+    Api.listen(this, "skills");
     Api.listen(this, "bank/stats");
   }
 
@@ -39,6 +42,7 @@ export default class Bank extends React.Component {
       <div style={{ margin: "1rem" }}>
         { renderBrains(this) }
         { renderTrainers(this) }
+        { renderSkills(this) }
         { renderStats(this) }
       </div>
     );
@@ -270,6 +274,56 @@ function renderTrainers(component) {
           <th style={ CENTER }>Learning rate</th>
           <th style={ CENTER }>Clip norm</th>
           <th style={ CENTER }>Measure batch size</th>
+          <th style={ CENTER }>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        { rows }
+      </tbody>
+    </table>
+  );
+}
+
+async function syncSkill(component, skill) {
+  const url = skill?.url || skill?.skill;
+
+  if (!url) {
+    return;
+  }
+
+  await Api.syncSkill(url);
+}
+
+function renderSkills(component) {
+  const skills = [...(component.state.skills || [])]
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+
+  const rows = skills.map(one => (
+    <tr key={ one.skill }>
+      <td style={ LEFT }>{ one.name }</td>
+      <td style={ LEFT }>{ one.skill }</td>
+      <td style={ CENTER }>{ one.version }</td>
+      <td style={ CENTER }>{ Number.isFinite(Number(one.time)) ? new Date(Number(one.time)).toLocaleString() : "" }</td>
+      <td style={ CENTER }>
+        <IconButton
+          aria-label={ `Sync ${one.name || one.url || "skill"}` }
+          size="small"
+          onClick={ () => syncSkill(component, one) }
+        >
+          <IconSync fontSize="inherit" />
+        </IconButton>
+      </td>
+    </tr>
+  ));
+
+  return (
+    <table style={ TABLE }>
+      <thead>
+        <tr style={ HEADER }>
+          <th style={ LEFT }>Skill</th>
+          <th style={ LEFT }>Repo</th>
+          <th style={ CENTER }>Version</th>
+          <th style={ CENTER }>Date</th>
           <th style={ CENTER }>Actions</th>
         </tr>
       </thead>

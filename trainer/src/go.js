@@ -1,6 +1,6 @@
 import Brain from "@norman-gym/brain/Brain.js";
 import createSamples from "@norman-gym/brain/ops/samples.js";
-import loadSkill from "@norman-gym/bank/skills.js";
+import { getSkill } from "@norman-gym/bank/skills.js";
 import { readBrain, downloadModel, uploadModel } from "@norman-gym/bank/brains.js";
 import { writeProgress } from "@norman-gym/bank/progress.js";
 import { readTrainer, writeTrainer } from "@norman-gym/bank/trainers.js";
@@ -56,13 +56,8 @@ async function startSession() {
   const metadata = await readBrain(config.brain);
 
   const reloadBrain = shouldReloadBrain(metadata);
-  const reloadSkill = reloadBrain || shouldReloadSkill(metadata);
 
-  if (reloadSkill) {
-    skill = await loadSkill(config.skill);
-
-    console.log("Skill:", JSON.stringify(skill));
-  }
+  skill = await getSkill(config.skill);
 
   if (reloadBrain) {
     const training = {
@@ -147,18 +142,6 @@ function shouldReloadBrain(metadata) {
 
   if (time && metadata.time && (metadata.time > time)) {
     console.log("Downloading external brain update from", time, "to", metadata.time);
-    return true;
-  }
-}
-
-function shouldReloadSkill(metadata) {
-  if (!skill) {
-    console.log("Initializing for skill", metadata.skill);
-    return true;
-  }
-
-  if (skill.url !== metadata.skill) {
-    console.log("Re-assigning from skill", skill.url, "to", metadata.skill);
     return true;
   }
 }

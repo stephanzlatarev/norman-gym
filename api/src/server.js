@@ -3,6 +3,7 @@ import express from "express";
 import { list, stats } from "@norman-gym/bank/db.js";
 import { downloadBrain, FILE_BRAIN } from "@norman-gym/bank/brains.js";
 import { consumeEvent, sendEvent } from "@norman-gym/bank/events.js";
+import { syncSkill } from "@norman-gym/bank/skills.js";
 import { writeTrainer } from "@norman-gym/bank/trainers.js";
 
 const port = process.env.PORT || 3000;
@@ -54,6 +55,17 @@ app.get("/api/brains/:brain/download", async (request, response) => {
     response.download(folder + "/" + FILE_BRAIN);
   } else {
     return sendError(response, "Unable to read it from database!");
+  }
+});
+
+app.get("/api/skills", listItems("skills"));
+app.post("/api/skills/sync", async (request, response) => {
+  try {
+    await syncSkill(request.body?.skill);
+
+    return sendResponse(response, { status: "OK" });
+  } catch (error) {
+    return sendError(response, { status: "ERROR", details: error?.message || error });
   }
 });
 

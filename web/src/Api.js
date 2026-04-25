@@ -46,6 +46,10 @@ class Api {
     }
   }
 
+  async syncSkill(skill) {
+    return this.post({ skill }, "skills", "sync");
+  }
+
   listen(component, entity) {
     if (entity) {
       let entities = listeners.get(component);

@@ -13,15 +13,17 @@ export default class Simulator extends React.Component {
 
     this.state = {
       events: [],
+      skills: [],
+      skill: null,
       step: null,
       merged: null,
-      observation: JSON.stringify({}, null, 2),
       simulation: null,
     };
   }
 
   async componentDidMount() {
     Api.listen(this, "events");
+    Api.listen(this, "skills");
   }
 
   componentWillUnmount() {
@@ -38,8 +40,8 @@ export default class Simulator extends React.Component {
     const progressing = this.state.step && !simulation;
 
     if (simulation && (this.state.merged !== this.state.step)) {
+      this.state.skill = this.state.skills.find(one => (one.skill === simulation.skill));
       this.state.simulation = simulation;
-      this.state.observation = pretty(merge(simulation.observation, simulation.action), null, 2);
       this.state.merged = this.state.step;
     }
 
@@ -47,7 +49,7 @@ export default class Simulator extends React.Component {
       <div>
         <h3>Simulator</h3>
 
-        Brain: tic-tac-toe
+        Brain: melee
         <br/>
 
         <Button size="small" onClick={ step.bind(this) } disabled={ progressing }>
@@ -63,14 +65,22 @@ export default class Simulator extends React.Component {
         <div style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", marginTop: "1rem", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 20rem", minWidth: "18rem" }}>
             <textarea
-              value={ this.state.observation }
+              value={ pretty(this.state.simulation?.observation) }
               onChange={ this.updateObservation.bind(this) }
               style={{ width: "100%", minHeight: "20rem", boxSizing: "border-box", fontFamily: "monospace", fontSize: "0.95rem" }}
             />
           </div>
 
           <div style={{ flex: "1 1 20rem", minWidth: "18rem" }}>
-            { this.state.simulation && <Board simulation={ this.state.simulation } /> }
+            { this.state.skill && this.state.simulation && <Board skill={ this.state.skill } simulation={ this.state.simulation } /> }
+          </div>
+
+          <div style={{ flex: "1 1 20rem", minWidth: "18rem" }}>
+            <textarea
+              value={ pretty(this.state.simulation?.action) }
+              readOnly
+              style={{ width: "100%", minHeight: "20rem", boxSizing: "border-box", fontFamily: "monospace", fontSize: "0.95rem" }}
+            />
           </div>
         </div>
       </div>
@@ -84,7 +94,7 @@ async function step() {
   }
 
   const step = String(Math.random());
-  const observation = merge(this.state.observation);
+  const observation = merge(this.state.simulation.observation, this.state.simulation.observation);
 
   await Api.post({ ref: step, brain: "tic-tac-toe", type: "simulation-step", observation }, "events");
 
@@ -98,14 +108,14 @@ async function worst() {
 
   const step = String(Math.random());
 
-  await Api.post({ ref: step, brain: "tic-tac-toe", type: "simulation-step", preference: "worst" }, "events");
+  await Api.post({ ref: step, brain: "melee", type: "simulation-step", preference: "worst" }, "events");
 
   this.setState({ step });
 }
 
 function merge(observation, action) {
   try {
-    const simulation = (typeof(observation) === "string") ? JSON.parse(observation) : observation;
+    const simulation = { ...observation };
 
     if (action) {
       for (const [type, objects] of Object.entries(action)) {
@@ -123,7 +133,7 @@ function merge(observation, action) {
 }
 
 function pretty(object) {
-  let text = JSON.stringify(object, null, 2);
+  let text = JSON.stringify(object || {}, null, 2);
 
   // Only inline arrays of primitives (no nested objects or arrays)
   text = text.replace(/\[\s*\n(\s*)([^\[\{]*?)\n\s*\]/gs, (match, indent, content) => {

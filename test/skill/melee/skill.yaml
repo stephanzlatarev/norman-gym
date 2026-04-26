@@ -16,11 +16,9 @@ observe:
       - name: range
         range: [0, 5]
 
-      - name: posx
+      - name: pos
         type: space
-        range: [0, 300]
-      - name: posy
-        type: space
+        axes: [x, y]
         range: [0, 300]
 
   warriors:
@@ -36,20 +34,16 @@ observe:
       - name: range
         range: [0, 5]
 
-      - name: posx
+      - name: pos
         type: space
-        range: [0, 300]
-      - name: posy
-        type: space
+        axes: [x, y]
         range: [0, 300]
 
       - name: action
         options: ["None", "Move", "Attack"]
-      - name: targetx
+      - name: target
         type: space
-        range: [0, 300]
-      - name: targety
-        type: space
+        axes: [x, y]
         range: [0, 300]
 
 act:
@@ -57,8 +51,35 @@ act:
   warriors:
     attributes:
       - name: action
-      - name: targetx
-      - name: targety
+      - name: target
 
 playbooks:
-  focus-fire: playbook-attack.js
+  priority-attack: playbook-priority-attack.js
+  focus-fire: playbook-focus-fire.js
+  kite-back: playbook-kite-back.js
+
+display:
+  enemies:
+    shape: circle
+    x: pos.x
+    y: pos.y
+    color: red
+    icon: https://robobays.github.io/images/unit/${type}.webp
+    trims:
+      - shape: circle
+        border: red
+        radius: range
+  warriors:
+    shape: circle
+    x: pos.x
+    y: pos.y
+    radius: radius
+    color: green
+    icon: https://robobays.github.io/images/unit/${type}.webp
+    trims:
+      - shape: arrow
+        headx: target.x
+        heady: target.y
+      - shape: circle
+        border: green
+        radius: range

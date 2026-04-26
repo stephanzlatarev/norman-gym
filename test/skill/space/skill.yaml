@@ -1,0 +1,54 @@
+# This is a test skill for actions in multi-dimensional space
+name: Multi-dimensional space
+
+observe:
+
+  actors:
+    limit: 3
+    attributes:
+
+      - name: pos
+        type: space
+        axes: [x, y]
+        range: [0, 100]
+
+      - name: target
+        type: space
+        axes: [x, y]
+        range: [0, 100]
+
+  targets:
+    limit: 3
+    attributes:
+
+      - name: pos
+        type: space
+        axes: [x, y]
+        range: [0, 100]
+
+act:
+
+  actors:
+    attributes:
+      - name: target
+
+playbooks:
+  # The playbook teaches that 1 actor should approach the closest of 2 targets
+  # Check if this is sufficient to learn that multiple actors should approach the closest of many targets
+  approach: playbook-approach.js
+
+display:
+  actors:
+    shape: circle
+    x: pos.x
+    y: pos.y
+    color: green
+    trims:
+      - shape: arrow
+        headx: target.x
+        heady: target.y
+  targets:
+    shape: circle
+    x: pos.x
+    y: pos.y
+    color: red

@@ -95,7 +95,7 @@ function syncConfiguration(expectedConfig) {
     expectedConfig.trainBatchSize = DEFAULT_TRAINING_BATCH_SIZE;
   }
 
-  if (!expectedConfig.dropoutRate) {
+  if (!(expectedConfig.dropoutRate >= 0)) {
     messages.push("Using default dropout rate");
     expectedConfig.dropoutRate = DEFAULT_DROPOUT_RATE;
   }

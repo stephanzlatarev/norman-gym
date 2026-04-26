@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Bank from "./Bank";
+import Doctor from "./Doctor";
 import Simulator from "./Simulator";
 import Trainers from "./Trainers";
 
@@ -25,6 +26,7 @@ export default class App extends React.Component {
       <Tabs value={ this.state.tab } onChange={ this.onTabChange.bind(this) }>
         <Tab label="Trainers" />
         <Tab label="Simulator" />
+        <Tab label="Doctor" />
         <Tab label="Bank" />
       </Tabs>
     );
@@ -34,7 +36,8 @@ export default class App extends React.Component {
     switch (this.state.tab) {
       case 0: return (<Trainers />);
       case 1: return (<Simulator />);
-      case 2: return (<Bank />);
+      case 2: return (<Doctor />);
+      case 3: return (<Bank />);
       default: return (<div>Oooops! Refresh the page, please!</div>);
     }
   }

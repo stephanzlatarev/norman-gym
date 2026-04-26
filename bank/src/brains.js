@@ -1,4 +1,4 @@
-import { collection, downloadFile, uploadFile } from "./db.js";
+import { collection, deleteFiles, downloadFile, uploadFile } from "./db.js";
 
 const KIND_BRAIN = "brain";
 
@@ -39,4 +39,8 @@ export async function updateBrain(brain, data) {
   const brains = await collection("brains");
 
   await brains.updateOne({ brain }, { $set: data }, { upsert: true });
+}
+
+export async function resetBrain(brain) {
+  await deleteFiles(KIND_BRAIN, brain);
 }

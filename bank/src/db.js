@@ -110,3 +110,12 @@ export async function uploadFile(kind, key, name, folder, version) {
 
   return true;
 }
+
+export async function deleteFiles(kind, key) {
+  const bucket = new GridFSBucket(await connect());
+  const cursor = bucket.find({ "metadata.kind": kind, "metadata.key": key });
+
+  for await (const file of cursor) {
+    await bucket.delete(file._id);
+  }
+}

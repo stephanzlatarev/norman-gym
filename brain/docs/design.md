@@ -287,9 +287,28 @@ A `padding_mask` input `(batch, totalObjects)` is added to the model. It is buil
 
 **Attention masking**: `GroupedQueryAttention` receives the mask as its 4th input (before optional RoPE coords). It converts `(1 - mask) * -1e9` into a bias tensor `(batch, 1, 1, seq)` added to the attention logits before softmax. This gives padding keys exactly zero attention weight across all heads.
 
-**Loss masking**: `encodeBatch` produces per-output sample weight tensors using `sampleWeightMode: 'temporal'`. For modify groups, weights are 1.0 for observed objects and 0.0 for padding slots up to the limit. For create groups, all slots have weight 1.0. The model is compiled with `sampleWeightModes` set to `'temporal'` for every output, and `model.evaluate()` receives the same weights so that `measure()` reports loss on real objects only.
+**Loss masking**: `encodeBatch` produces per-output sample weight tensors using `sampleWeightMode: 'temporal'`. For modify groups, weights are 1.0 for observed objects and 0.0 for padding slots up to the limit. For create groups, all slots have weight 1.0. The weights are then **normalized so they sum to `outputObjects`** — this compensates for TF.js computing weighted loss as `sum(loss * weight) / numTimesteps` rather than `sum(loss * weight) / sum(weight)`. Without normalization, gradients are diluted by the ratio of padding to total slots (e.g., 1 real object out of 3 slots would receive 1/3 gradient strength). The model is compiled with `sampleWeightModes` set to `'temporal'` for every output, and `model.evaluate()` receives the same weights so that `measure()` reports loss on real objects only.
 
 This ensures that:
 - Padding objects cannot influence real objects through attention
 - The loss reflects only real-object prediction quality
 - The reported loss is directly comparable across samples with different object counts
+- Gradient strength is independent of how many objects are padding
+
+---
+
+## Decision 9: Output Target Normalization
+
+Space and scalar output targets are normalized to [0, 1] using the attribute's declared `[min, max]` range before training. Predictions are denormalized back to the original range in `decodeAction`.
+
+### Motivation
+
+Without normalization, targets in large ranges (e.g., [0, 100]) produce MSE gradients with magnitude proportional to the range. With Adam + global gradient clipping (`clipNorm`), the gradient norm across all 300K+ parameters causes the clip factor to severely throttle learning — the effective learning rate drops by orders of magnitude (e.g., `clipNorm=1.0` with raw [0,100] targets clips gradients by ~600x, reducing effective LR to ~0.0000016). The model learns glacially, taking hundreds of iterations just to shift its output from the initialization mean toward the data mean.
+
+### Implementation
+
+- **`encodeAction`**: For space attributes, each axis value is mapped `(value - min) / (max - min)`. For scalar attributes, the single value is mapped the same way. Padding slot values use `min` (mapping to 0.0), which is harmless since their sample weight is 0.
+- **`decodeAction`**: For space attributes, each predicted axis value is mapped `value * (max - min) + min`. For scalar attributes, the same inverse transform applies.
+- Label attributes are unaffected (they use one-hot encoding / cross-entropy).
+
+This keeps all continuous targets in a narrow [0, 1] range regardless of the skill's coordinate system, ensuring consistent gradient magnitude and full utilization of the learning rate.

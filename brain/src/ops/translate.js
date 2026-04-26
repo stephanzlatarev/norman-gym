@@ -72,21 +72,27 @@ export function encodeAction(meta, skill, action) {
         }
         targets.push(tf.tensor3d([oneHot], [1, group.outputObjects, numOptions]));
       } else if (attr.type === "space") {
-        // Multi-axis space: output (batch, outputObjects, numAxes)
+        // Multi-axis space: output (batch, outputObjects, numAxes), normalized to [0,1]
+        const [min, max] = attr.range;
+        const range = max - min;
         const rows = [];
         for (let i = 0; i < group.outputObjects; i++) {
           const row = [];
           for (let a = 0; a < attr.tupleWidth; a++) {
-            row.push(i < tuples.length ? tuples[i][attr.actTupleOffset + a] : 0);
+            const raw = i < tuples.length ? tuples[i][attr.actTupleOffset + a] : min;
+            row.push((raw - min) / range);
           }
           rows.push(row);
         }
         targets.push(tf.tensor3d([rows], [1, group.outputObjects, attr.tupleWidth]));
       } else {
-        // scalar
+        // scalar, normalized to [0,1]
+        const [min, max] = attr.range;
+        const range = max - min;
         const values = [];
         for (let i = 0; i < group.outputObjects; i++) {
-          values.push(i < tuples.length ? tuples[i][attr.actTupleOffset] : 0);
+          const raw = i < tuples.length ? tuples[i][attr.actTupleOffset] : min;
+          values.push((raw - min) / range);
         }
         targets.push(tf.tensor3d([values.map(v => [v])], [1, group.outputObjects, 1]));
       }
@@ -193,12 +199,17 @@ export function decodeAction(meta, skill, pred, observation = {}) {
           }
           tuple.push(attr.options[maxIdx]);
         } else if (attr.type === "space") {
-          // Multi-axis: read tupleWidth values per object
+          // Multi-axis: read tupleWidth values per object, denormalize from [0,1] to [min,max]
+          const [min, max] = attr.range;
+          const range = max - min;
           for (let a = 0; a < attr.tupleWidth; a++) {
-            tuple.push(attrData[attr.name][i * attr.tupleWidth + a]);
+            tuple.push(attrData[attr.name][i * attr.tupleWidth + a] * range + min);
           }
         } else {
-          tuple.push(attrData[attr.name][i]);
+          // scalar: denormalize from [0,1] to [min,max]
+          const [min, max] = attr.range;
+          const range = max - min;
+          tuple.push(attrData[attr.name][i] * range + min);
         }
       }
       tuples.push(tuple);

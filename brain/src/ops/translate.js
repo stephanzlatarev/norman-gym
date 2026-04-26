@@ -148,9 +148,16 @@ function encodeSampleWeights(meta, skill, observation) {
       values.push(1.0);
     }
 
+    // Normalize weights so they sum to outputObjects.
+    // TF.js divides weighted loss by total timesteps, not sum of weights.
+    // Without normalization, gradients are diluted by the ratio of padding slots.
+    const realCount = values.reduce((s, v) => s + v, 0);
+    const scale = realCount > 0 ? group.outputObjects / realCount : 0;
+    const scaled = values.map(v => v * scale);
+
     // One weight tensor per output attribute (same mask for all attributes in the group)
     for (const attr of group.actAttributes) {
-      weights.push(tf.tensor2d([values], [1, group.outputObjects]));
+      weights.push(tf.tensor2d([scaled], [1, group.outputObjects]));
     }
   }
 

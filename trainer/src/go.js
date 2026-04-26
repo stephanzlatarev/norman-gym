@@ -35,7 +35,7 @@ async function go() {
 
       brain.train(createSamples(skill.playbooks, config.trainBatchSize), SESSION_SECONDS);
 
-      const loss = measure();
+      const { loss, accuracy } = measure();
 
       if (loss.overall < record.overall) {
         await brain.save(STORE_FOLDER);
@@ -44,7 +44,7 @@ async function go() {
         record = loss;
       }
 
-      await writeProgress(TRAINER_NAME, { loss, ...resources() });
+      await writeProgress(TRAINER_NAME, { loss, accuracy, ...resources() });
     } else {
       await new Promise(resolve => setTimeout(resolve, SESSION_MILLIS));
       await writeProgress(TRAINER_NAME, resources());
@@ -148,23 +148,47 @@ function shouldReloadBrain(metadata) {
 
 function measure() {
   const loss = {};
+  const accuracy = {};
 
-  let sum = 0;
-  let count = 0;
+  let lossSum = 0;
+  let lossCount = 0;
+  const allPerSample = [];
 
   for (const [name, generator] of Object.entries(skill.playbooks)) {
     const samples = createSamples({ playbook: generator }, config.measureBatchSize);
     const measurement = brain.measure(samples);
+    const perSample = brain.measurePerSample(samples);
 
     loss[name] = measurement;
+    accuracy[name] = percentileBuckets(perSample);
 
-    sum += measurement;
-    count++;
+    lossSum += measurement;
+    lossCount++;
+    allPerSample.push(...perSample);
   }
 
-  loss.overall = sum / count;
+  loss.overall = lossSum / lossCount;
+  accuracy.overall = percentileBuckets(allPerSample);
 
-  return loss;
+  return { loss, accuracy };
+}
+
+function percentileBuckets(losses) {
+  const sorted = losses.slice().sort((a, b) => a - b);
+  const n = sorted.length;
+  const buckets = [];
+
+  for (let i = 0; i < 20; i++) {
+    const start = Math.floor((i * n) / 20);
+    const end = Math.floor(((i + 1) * n) / 20);
+    let max = 0;
+    for (let j = start; j < end; j++) {
+      if (sorted[j] > max) max = sorted[j];
+    }
+    buckets.push(max);
+  }
+
+  return buckets;
 }
 
 go();

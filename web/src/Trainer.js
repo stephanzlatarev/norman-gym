@@ -4,6 +4,7 @@ import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import Histogram from "./Histogram";
 import Progress from "./Progress";
 
 export default class Trainer extends React.Component {
@@ -12,6 +13,9 @@ export default class Trainer extends React.Component {
     super();
 
     this.state = {
+      accuracyTab: 0,
+      accuracyLabel: null,
+      accuracyLabels: [],
       resourceTab: 0,
       progressTab: 0,
       progressLabel: null,
@@ -21,19 +25,28 @@ export default class Trainer extends React.Component {
 
   componentDidUpdate(props) {
     if (props === this.props) return;
-    if (this.state.progressLabel) return;
 
     const progress = this.props.trainer.progress;
     if (!progress.length) return;
 
     const point = progress[progress.length - 1] || {};
-    if (!point.loss) point.loss = { overall: 0 };
 
-    const labels = Object.keys(point.loss);
-    const tab = labels.indexOf("overall");
+    if (!this.state.progressLabel) {
+      if (!point.loss) point.loss = { overall: 0 };
 
-    if (this.state.progressLabel !== "overall") {
-      this.setState({ progressTab: tab, progressLabels: labels, progressLabel: "overall" });
+      const labels = Object.keys(point.loss);
+      const tab = labels.indexOf("overall");
+
+      if (this.state.progressLabel !== "overall") {
+        this.setState({ progressTab: tab, progressLabels: labels, progressLabel: "overall" });
+      }
+    }
+
+    if (!this.state.accuracyLabel && point.accuracy) {
+      const labels = Object.keys(point.accuracy);
+      const tab = labels.indexOf("overall");
+
+      this.setState({ accuracyTab: Math.max(tab, 0), accuracyLabels: labels, accuracyLabel: "overall" });
     }
   }
 
@@ -56,6 +69,29 @@ export default class Trainer extends React.Component {
     const progress = this.props.trainer.progress.map(one => ({ [label]: one.loss?.[label] }));
 
     return (<Progress progress={ progress } indicator={ label } type="log" visible="true" />);
+  }
+
+  onAccuracyTabChange(_, value) {
+    this.setState({ accuracyTab: value, accuracyLabel: this.state.accuracyLabels[value] });
+  }
+
+  renderAccuracyTabs() {
+    const tabs = this.state.accuracyLabels.map(one => (<Tab key={ one } label={ one } />));
+
+    return (
+      <Tabs value={ this.state.accuracyTab } onChange={ this.onAccuracyTabChange.bind(this) }>
+        { tabs }
+      </Tabs>
+    );
+  }
+
+  renderAccuracyView() {
+    const label = this.state.accuracyLabel;
+    const progress = this.props.trainer.progress;
+    const latest = progress[progress.length - 1];
+    const data = latest?.accuracy?.[label];
+
+    return (<Histogram data={ data } visible="true" />);
   }
 
   onResourceTabTabChange(_, value) {
@@ -87,6 +123,15 @@ export default class Trainer extends React.Component {
         <Paper elevation={3} sx={{ padding: "1rem" }}>
           { trainer.trainer } | { trainer.brain } | { trainer.trainBatchSize }
         </Paper>
+
+        { this.state.accuracyLabels.length > 0 &&
+          <Paper elevation={3} sx={{ padding: "1rem" }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              { this.renderAccuracyTabs() }
+            </Box>
+            { this.renderAccuracyView() }
+          </Paper>
+        }
 
         <Paper elevation={3} sx={{ padding: "1rem" }}>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

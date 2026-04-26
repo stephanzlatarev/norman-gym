@@ -89,6 +89,41 @@ export default class Brain {
     return loss;
   }
 
+  // Returns a Float64Array of per-sample weighted losses
+  measurePerSample(samples) {
+    return tf.tidy(() => {
+      const data = encodeBatch(this.meta, this.skill, samples);
+      const numInputs = this.model.inputs.length;
+      const numOutputs = this.meta.outputNames.length;
+      const inputs = data.slice(0, numInputs);
+      const targets = data.slice(numInputs, numInputs + numOutputs);
+      const weights = data.slice(numInputs + numOutputs);
+
+      const predictions = this.model.predict(inputs, { batchSize: samples.length });
+      const predArray = Array.isArray(predictions) ? predictions : [predictions];
+
+      // Compute weighted MSE per sample for each output, then average across outputs
+      const perSampleParts = [];
+      for (let i = 0; i < numOutputs; i++) {
+        // squared error: (batch, objects, units)
+        const se = predArray[i].sub(targets[i]).square();
+        // mean over units (last axis): (batch, objects)
+        const msePerObject = se.mean(-1);
+        // multiply by sample weights: (batch, objects)
+        const weighted = msePerObject.mul(weights[i]);
+        // mean over objects: (batch,)
+        const perSample = weighted.mean(-1);
+        perSampleParts.push(perSample);
+      }
+
+      // Average across outputs: (batch,)
+      const stacked = tf.stack(perSampleParts, 0); // (numOutputs, batch)
+      const perSampleLoss = stacked.mean(0); // (batch,)
+
+      return Array.from(perSampleLoss.dataSync());
+    });
+  }
+
   summary() {
     this.model.summary();
   }

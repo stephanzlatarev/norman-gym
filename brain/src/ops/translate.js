@@ -9,23 +9,36 @@ export function encodeObservation(meta, skill, observation) {
 
     for (let ai = 0; ai < group.observeAttributes.length; ai++) {
       const attr = group.observeAttributes[ai];
-      const values = [];
 
-      for (let i = 0; i < group.limit; i++) {
-        if (i < objects.length) {
-          const rawVal = objects[i][ai];
-          if (attr.type === "label") {
-            values.push(attr.options.indexOf(rawVal) + 1);
-          } else {
-            values.push(rawVal);
+      if (attr.type === "space") {
+        // Multi-axis space: read tupleWidth values from each object
+        const axisValues = [];
+        for (let i = 0; i < group.limit; i++) {
+          const row = [];
+          for (let a = 0; a < attr.tupleWidth; a++) {
+            row.push(i < objects.length ? objects[i][attr.tupleOffset + a] : 0);
           }
-        } else {
-          values.push(0);
+          axisValues.push(row);
         }
+        input[group.name][attr.name] = tf.tensor3d([axisValues], [1, group.limit, attr.tupleWidth], "float32");
+      } else if (attr.type === "label") {
+        const values = [];
+        for (let i = 0; i < group.limit; i++) {
+          if (i < objects.length) {
+            values.push(attr.options.indexOf(objects[i][attr.tupleOffset]) + 1);
+          } else {
+            values.push(0);
+          }
+        }
+        input[group.name][attr.name] = tf.tensor2d([values], [1, group.limit], "int32");
+      } else {
+        // scalar
+        const values = [];
+        for (let i = 0; i < group.limit; i++) {
+          values.push(i < objects.length ? objects[i][attr.tupleOffset] : 0);
+        }
+        input[group.name][attr.name] = tf.tensor2d([values], [1, group.limit], "float32");
       }
-
-      const dtype = attr.type === "label" ? "int32" : "float32";
-      input[group.name][attr.name] = tf.tensor2d([values], [1, group.limit], dtype);
     }
   }
 
@@ -41,7 +54,6 @@ export function encodeAction(meta, skill, action) {
     const tuples = action[group.name] || [];
 
     for (const attr of group.actAttributes) {
-      const ai = group.actAttributes.indexOf(attr);
 
       if (attr.type === "label") {
         const numOptions = attr.options.length;
@@ -49,16 +61,28 @@ export function encodeAction(meta, skill, action) {
         for (let i = 0; i < group.outputObjects; i++) {
           const row = new Array(numOptions).fill(0);
           if (i < tuples.length) {
-            const idx = attr.options.indexOf(tuples[i][ai]);
+            const idx = attr.options.indexOf(tuples[i][attr.actTupleOffset]);
             if (idx >= 0) row[idx] = 1;
           }
           oneHot.push(row);
         }
         targets.push(tf.tensor3d([oneHot], [1, group.outputObjects, numOptions]));
+      } else if (attr.type === "space") {
+        // Multi-axis space: output (batch, outputObjects, numAxes)
+        const rows = [];
+        for (let i = 0; i < group.outputObjects; i++) {
+          const row = [];
+          for (let a = 0; a < attr.tupleWidth; a++) {
+            row.push(i < tuples.length ? tuples[i][attr.actTupleOffset + a] : 0);
+          }
+          rows.push(row);
+        }
+        targets.push(tf.tensor3d([rows], [1, group.outputObjects, attr.tupleWidth]));
       } else {
+        // scalar
         const values = [];
         for (let i = 0; i < group.outputObjects; i++) {
-          values.push(i < tuples.length ? tuples[i][ai] : 0);
+          values.push(i < tuples.length ? tuples[i][attr.actTupleOffset] : 0);
         }
         targets.push(tf.tensor3d([values.map(v => [v])], [1, group.outputObjects, 1]));
       }
@@ -121,7 +145,10 @@ export function decodeAction(meta, skill, pred, observation = {}) {
           }
           tuple.push(attr.options[maxIdx]);
         } else if (attr.type === "space") {
-          tuple.push(attrData[attr.name][i]);
+          // Multi-axis: read tupleWidth values per object
+          for (let a = 0; a < attr.tupleWidth; a++) {
+            tuple.push(attrData[attr.name][i * attr.tupleWidth + a]);
+          }
         } else {
           tuple.push(attrData[attr.name][i]);
         }
@@ -142,6 +169,34 @@ export function flattenInput(meta, input) {
       flatInputs.push(input[group.name][attr.name]);
     }
   }
+
+  // Append RoPE coordinate tensor if spatial axes exist
+  if (meta.spatialAxes > 0) {
+    const coordParts = [];
+
+    for (const group of meta.groups) {
+      if (group.spatialAttribute) {
+        // First space attribute input: (batch, limit, spatialAxes)
+        coordParts.push(input[group.name][group.spatialAttribute]);
+      } else {
+        // No spatial attribute in this group: pad with zeros
+        const batchSize = flatInputs[0].shape[0];
+        coordParts.push(tf.zeros([batchSize, group.limit, meta.spatialAxes]));
+      }
+    }
+
+    // Pad create objects with zeros
+    if (meta.totalCreateObjects > 0) {
+      const batchSize = flatInputs[0].shape[0];
+      coordParts.push(tf.zeros([batchSize, meta.totalCreateObjects, meta.spatialAxes]));
+    }
+
+    const coords = coordParts.length === 1
+      ? coordParts[0]
+      : tf.concat(coordParts, 1); // (batch, totalObjects, spatialAxes)
+    flatInputs.push(coords);
+  }
+
   return flatInputs;
 }
 

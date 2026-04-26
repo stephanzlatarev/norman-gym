@@ -1,12 +1,13 @@
 import tf from "../tf.js";
 
-// Takes raw values (batch, limit, 1) and produces sinusoidal encoding (batch, limit, attributeWidth).
-// Config: { attributeWidth, min, max }
-// Normalized to [0,1] using [min, max], then encoded with attributeWidth/2 sin+cos frequency bands.
+// Takes raw values (batch, limit, numAxes) and produces sinusoidal encoding (batch, limit, attributeWidth).
+// Config: { attributeWidth, numAxes, min, max }
+// Normalized to [0,1] using [min, max], then encoded with frequency bands split across axes.
 export default class SinusoidalEncoding extends tf.layers.Layer {
   constructor(config) {
     super(config);
     this.attributeWidth = config.attributeWidth;
+    this.numAxes = config.numAxes || 1;
     this.min = config.min;
     this.max = config.max;
   }
@@ -18,28 +19,35 @@ export default class SinusoidalEncoding extends tf.layers.Layer {
   call(inputs, kwargs) {
     return tf.tidy(() => {
       const rawValues = Array.isArray(inputs) ? inputs[0] : inputs;
-      // rawValues shape: (batch, limit, 1)
+      // rawValues shape: (batch, limit, numAxes)
 
       const range = this.max - this.min;
-      const normalized = rawValues.sub(this.min).div(range); // (batch, limit, 1)
+      const normalized = rawValues.sub(this.min).div(range); // (batch, limit, numAxes)
 
-      const halfWidth = this.attributeWidth / 2;
+      const axisWidth = this.attributeWidth / this.numAxes;
+      const halfAxisWidth = axisWidth / 2;
       const freqs = [];
-      for (let i = 0; i < halfWidth; i++) {
-        freqs.push(Math.pow(10000, i / Math.max(halfWidth - 1, 1)));
+      for (let i = 0; i < halfAxisWidth; i++) {
+        freqs.push(Math.pow(10000, i / Math.max(halfAxisWidth - 1, 1)));
       }
-      const freqTensor = tf.tensor1d(freqs); // (halfWidth,)
+      const freqTensor = tf.tensor1d(freqs); // (halfAxisWidth,)
 
-      const angles = normalized.mul(freqTensor); // (batch, limit, halfWidth)
-      const sinPart = angles.sin();
-      const cosPart = angles.cos();
-      return tf.concat([sinPart, cosPart], -1); // (batch, limit, attributeWidth)
+      const parts = [];
+      for (let a = 0; a < this.numAxes; a++) {
+        const axisValues = normalized.slice([0, 0, a], [-1, -1, 1]); // (batch, limit, 1)
+        const angles = axisValues.mul(freqTensor); // (batch, limit, halfAxisWidth)
+        parts.push(angles.sin());
+        parts.push(angles.cos());
+      }
+
+      return tf.concat(parts, -1); // (batch, limit, attributeWidth)
     });
   }
 
   getConfig() {
     const config = super.getConfig();
     config.attributeWidth = this.attributeWidth;
+    config.numAxes = this.numAxes;
     config.min = this.min;
     config.max = this.max;
     return config;

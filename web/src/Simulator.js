@@ -49,7 +49,7 @@ export default class Simulator extends React.Component {
       <div>
         <h3>Simulator</h3>
 
-        Brain: melee
+        Brain: space
         <br/>
 
         <Button size="small" onClick={ step.bind(this) } disabled={ progressing }>
@@ -108,7 +108,7 @@ async function worst() {
 
   const step = String(Math.random());
 
-  await Api.post({ ref: step, brain: "melee", type: "simulation-step", preference: "worst" }, "events");
+  await Api.post({ ref: step, brain: "space", type: "simulation-step", preference: "worst" }, "events");
 
   this.setState({ step });
 }

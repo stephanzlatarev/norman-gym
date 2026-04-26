@@ -22,7 +22,7 @@ The plan says input should be "structured per observe group, per object, and per
 ```
 - Most explicit, self-documenting, easy to validate per attribute.
 - Easy to align with skill definition.
-- Each tensor shape: `(batch, limit)` for scalars/space, `(batch, limit)` of integer indices for labels.
+- Each tensor shape: `(batch, limit)` for scalars, `(batch, limit, numAxes)` for space, `(batch, limit)` of integer indices for labels.
 
 **B. One tensor per group**
 ```js
@@ -72,11 +72,22 @@ Reusing observe objects for modification is natural — the transformer already 
 
 ---
 
-## Decision 3: Sinusoidal/Fourier Encoding Parameters
+## Decision 3: Spatial Encoding
 
-The plan says to apply sinusoidal encoding for `space` attributes but doesn't specify the configuration.
+The plan says to apply sinusoidal encoding for `space` attributes but doesn't specify the configuration. Space attributes declare their coordinate axes (e.g., `axes: [x, y]`) so that coordinates forming a point are grouped together rather than treated as independent scalars.
 
-### Options
+### Multi-axis schema
+
+Space attributes in the skill YAML use an `axes` field:
+```yaml
+- name: pos
+  type: space
+  axes: [x, y]
+  range: [0, 300]
+```
+This replaces separate per-coordinate attributes (e.g., `posx`, `posy`). The input tensor shape for a space attribute is `(batch, limit, numAxes)`. The output head produces `numAxes` units. Playbook tuples contain the axis values inline at the attribute's tuple offset (e.g., `["Zealot", 150, 1, 0.1, px, py, "None", tx, ty]` where `pos` occupies two slots and `target` occupies two slots).
+
+### Sinusoidal encoding options
 
 **A. Fixed sin+cos pairs, filling attributeWidth**
 - Use `attributeWidth / 2` frequency bands.
@@ -89,13 +100,28 @@ The plan says to apply sinusoidal encoding for `space` attributes but doesn't sp
 - Resulting `attributeWidth` vector is added to the linear projection.
 - Adds a few learnable parameters but adapts to the data range.
 
-**C. Fixed frequencies scaled by attribute range**
-- Same as A but scale input to [0, 1] using the attribute's `[min, max]` range before encoding.
+**C. Fixed frequencies scaled by attribute range, split across axes**
+- Scale each axis to [0, 1] using the attribute's `[min, max]` range before encoding.
+- Split `attributeWidth` evenly across axes: each axis gets `attributeWidth / numAxes` dimensions.
+- Within each axis allocation, use half for sin and half for cos with geometric frequency spacing.
 - Ensures frequencies are meaningful regardless of attribute scale.
+- The dot product between two joint encodings naturally reflects multi-dimensional proximity.
 
-### Decision: Option C
+### Decision: Option C (multi-axis sinusoidal) + Rotary Positional Embeddings (RoPE)
 
-Fixed sinusoidal with range normalization. It's parameter-free, deterministic, and the range info from the skill definition naturally normalizes the input. Use `attributeWidth / 2` sin+cos pairs with geometric frequency spacing. The encoding is added element-wise to the linear projection output (both are `attributeWidth`-sized).
+Fixed sinusoidal with range normalization and multi-axis support. Frequency bands are split evenly across axes — for a 2D point with `attributeWidth=64`, each axis gets 32 dimensions (16 sin + 16 cos). The encoding is added element-wise to the learned dense projection output.
+
+In addition, **multi-axis RoPE** is applied inside every attention layer to provide relative spatial awareness:
+- Each attention head's dimensions are split across spatial axes. For `headDim=16` and 2 axes, each axis gets 8 dimensions (4 rotation pairs).
+- Q and K vectors are rotated by angles derived from each object's spatial coordinates before the dot product.
+- This makes attention scores inherently distance-dependent — closer objects attend more strongly — and the signal persists through all transformer layers (unlike additive encodings which degrade).
+- The rotation uses precomputed frequencies `1/10000^(2i/axisDim)` and applies element-wise sin/cos rotation to even/odd dimension pairs.
+- RoPE coordinates come from the first space attribute of each group (e.g., `pos` for both `enemies` and `warriors`). Groups without space attributes and create objects receive zero coordinates (identity rotation).
+- A single `rope_coords` input tensor `(batch, totalObjects, spatialAxes)` is assembled by `flattenInput` and fed to all transformer blocks.
+
+Both encodings are complementary: the sinusoidal input encoding provides absolute position awareness to FFN layers and output heads, while RoPE provides relative distance awareness in attention. The sinusoidal encoding is negligible in compute cost (runs once at input), and RoPE adds ~5% overhead per attention layer (linear in sequence length vs. quadratic for the attention matmuls).
+
+For skills without any space attributes, `spatialAxes=0`, no `rope_coords` input is created, and GQA operates without rotations — standard attention with no overhead.
 
 ---
 
@@ -173,7 +199,8 @@ src/
       GroupPositionalEncoding.js   # Fixed sinusoidal group-level positional encoding
       CreateObjects.js            # Learned embeddings for create objects
       SliceObjects.js             # Slices a group's objects from the sequence dimension
-      GroupedQueryAttention.js    # Grouped Query Attention (reshape, scale, softmax)
+      GroupedQueryAttention.js    # Grouped Query Attention with multi-axis RoPE
+                                    #   (reshape, rotate Q/K, scale, softmax)
       FinalLayerNorm.js           # Final layer normalization before output heads
 
     # Operation functions

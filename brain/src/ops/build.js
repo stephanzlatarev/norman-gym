@@ -10,7 +10,7 @@ import computeMetadata from "./meta.js";
 
 // --- Transformer block wiring (functional API) ---
 
-function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config) {
+function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config, coords, spatialAxes) {
   const p = `block${blockIdx}`;
   const headDim = objectWidth / config.attentionHeads;
 
@@ -22,14 +22,16 @@ function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config)
   let K = tf.layers.dense({ units: config.attentionGroups * headDim, name: `${p}_K` }).apply(normed);
   let V = tf.layers.dense({ units: config.attentionGroups * headDim, name: `${p}_V` }).apply(normed);
 
-  // GQA attention (reshape + scaled dot-product, no learnable weights)
+  // GQA attention with optional RoPE
+  const gqaInputs = coords ? [Q, K, V, coords] : [Q, K, V];
   let attnOut = new GroupedQueryAttention({
     objectWidth,
     attentionHeads: config.attentionHeads,
     attentionGroups: config.attentionGroups,
     dropoutRate: config.dropoutRate,
+    spatialAxes,
     name: `${p}_gqa`,
-  }).apply([Q, K, V]);
+  }).apply(gqaInputs);
 
   // Output projection
   attnOut = tf.layers.dense({ units: objectWidth, name: `${p}_O` }).apply(attnOut);
@@ -59,24 +61,32 @@ function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config)
 function buildEncoderForAttribute(attr, attributeWidth, groupName, limit, inputTensors) {
   const inputName = `${groupName}_${attr.name}_in`;
 
-  if (attr.type === "space" || attr.type === "scalar") {
-    // Input: (batch, limit) -> expand to (batch, limit, 1)
+  if (attr.type === "space") {
+    // Multi-axis space: Input (batch, limit, numAxes)
+    const numAxes = attr.axes.length;
+    const input = tf.input({ shape: [limit, numAxes], name: inputName, dtype: "float32" });
+    inputTensors.push(input);
+
+    let projected = tf.layers.dense({ units: attributeWidth, name: `${groupName}_${attr.name}_proj`, useBias: true }).apply(input);
+
+    // Compute multi-axis sinusoidal encoding from raw values and add to projection
+    const encoding = new SinusoidalEncoding({
+      attributeWidth,
+      numAxes,
+      min: attr.range[0],
+      max: attr.range[1],
+      name: `${groupName}_${attr.name}_spatial`,
+    }).apply(input);
+    projected = tf.layers.add({ name: `${groupName}_${attr.name}_spatialadd` }).apply([projected, encoding]);
+
+    return { input, encoded: projected };
+  } else if (attr.type === "scalar") {
+    // Scalar: Input (batch, limit) -> expand to (batch, limit, 1)
     const input = tf.input({ shape: [limit], name: inputName, dtype: "float32" });
     inputTensors.push(input);
 
     let expanded = tf.layers.reshape({ targetShape: [limit, 1], name: `${groupName}_${attr.name}_expand` }).apply(input);
     let projected = tf.layers.dense({ units: attributeWidth, name: `${groupName}_${attr.name}_proj`, useBias: true }).apply(expanded);
-
-    if (attr.type === "space") {
-      // Compute sinusoidal encoding from raw values and add to projection
-      const encoding = new SinusoidalEncoding({
-        attributeWidth,
-        min: attr.range[0],
-        max: attr.range[1],
-        name: `${groupName}_${attr.name}_spatial`,
-      }).apply(expanded);
-      projected = tf.layers.add({ name: `${groupName}_${attr.name}_spatialadd` }).apply([projected, encoding]);
-    }
 
     return { input, encoded: projected };
   } else {
@@ -149,7 +159,13 @@ function buildOutputHead(groupMeta, attr, objectWidth, transformerOutput) {
   }
 
   // Output head: single dense layer
-  if (attr.type === "space" || attr.type === "scalar") {
+  if (attr.type === "space") {
+    return tf.layers.dense({
+      units: attr.axes.length,
+      name: outputName,
+      useBias: true,
+    }).apply(objects);
+  } else if (attr.type === "scalar") {
     return tf.layers.dense({
       units: 1,
       name: outputName,
@@ -170,10 +186,11 @@ export default function build(skill, config) {
   validate(skill, config);
 
   const meta = computeMetadata(skill, config);
-  const { attributeWidth, objectWidth, brainWidth, groups, groupAssignments, totalObjects, totalCreateObjects, numGroups } = meta;
+  const { attributeWidth, objectWidth, brainWidth, groups, groupAssignments, totalObjects, totalCreateObjects, numGroups, spatialAxes } = meta;
 
   const allInputs = [];
   const mixedGroups = [];
+  const spatialInputs = {}; // groupName -> input tensor for first space attribute
 
   // Build encoders and mixers for each observe group
   for (const group of groups) {
@@ -182,6 +199,11 @@ export default function build(skill, config) {
     for (const attr of group.observeAttributes) {
       const { input, encoded } = buildEncoderForAttribute(attr, attributeWidth, group.name, group.limit, allInputs);
       encodedAttrs.push(encoded);
+
+      // Track the first space attribute's input for RoPE coords
+      if (attr.type === "space" && !spatialInputs[group.name]) {
+        spatialInputs[group.name] = input;
+      }
     }
 
     const mixed = buildMixer(group, attributeWidth, objectWidth, encodedAttrs);
@@ -221,9 +243,17 @@ export default function build(skill, config) {
     name: "group_pe",
   }).apply(allObjects);
 
+  // Build RoPE coordinate tensor if spatial axes exist
+  let coordsTensor = null;
+  if (spatialAxes > 0) {
+    const coordsInput = tf.input({ shape: [totalObjects, spatialAxes], name: "rope_coords", dtype: "float32" });
+    allInputs.push(coordsInput);
+    coordsTensor = coordsInput;
+  }
+
   // Stack transformer blocks using standard functional API layers
   for (let i = 0; i < config.brainLayers; i++) {
-    allObjects = buildTransformerBlock(allObjects, i, objectWidth, brainWidth, config);
+    allObjects = buildTransformerBlock(allObjects, i, objectWidth, brainWidth, config, coordsTensor, spatialAxes);
   }
 
   // Final layer norm

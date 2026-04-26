@@ -22,13 +22,33 @@ export default function computeMetadata(skill, config) {
       const type = attr.type || (attr.options ? "label" : attr.range ? "scalar" : undefined);
       const base = { name: attr.name, type };
       if (type === "space" || type === "scalar") base.range = attr.range;
+      if (type === "space") {
+        base.axes = attr.axes;
+        base.tupleWidth = attr.axes.length;
+      } else {
+        base.tupleWidth = 1;
+      }
       if (type === "label") base.options = attr.options;
       return base;
     });
 
+    // Compute tuple offsets for observe attributes
+    let tupleOffset = 0;
+    for (const attr of observeAttributes) {
+      attr.tupleOffset = tupleOffset;
+      tupleOffset += attr.tupleWidth;
+    }
+
     const actAttributes = actGroup ? actGroup.attributes.map(attribute => {
       return observeAttributes.find(a => a.name === attribute.name);
     }) : [];
+
+    // Compute tuple offsets for act attributes
+    let actTupleOffset = 0;
+    for (const attr of actAttributes) {
+      attr.actTupleOffset = actTupleOffset;
+      actTupleOffset += attr.tupleWidth;
+    }
 
     const outputObjects = (modify ? limit : 0) + create;
 
@@ -67,6 +87,16 @@ export default function computeMetadata(skill, config) {
   const totalObjects = objectOffset;
   const totalCreateObjects = groups.reduce((sum, g) => sum + g.create, 0);
 
+  // Determine spatial axes from first space attribute per group
+  let spatialAxes = 0;
+  for (const group of groups) {
+    const firstSpace = group.observeAttributes.find(a => a.type === "space");
+    if (firstSpace) {
+      group.spatialAttribute = firstSpace.name;
+      spatialAxes = Math.max(spatialAxes, firstSpace.axes.length);
+    }
+  }
+
   // Build loss mapping and output names from act groups
   const lossMap = {};
   const outputNames = [];
@@ -88,6 +118,7 @@ export default function computeMetadata(skill, config) {
     totalObjects,
     totalCreateObjects,
     numGroups: observeGroupNames.length,
+    spatialAxes,
     lossMap,
     outputNames,
   };

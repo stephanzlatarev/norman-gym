@@ -90,6 +90,9 @@ function logy(value, e) {
 }
 
 function logt(e) {
+  if (e > 10) return "∞";
+  if (e < -10) return "0";
+
   if (e < 0) {
     let tick = "0.";
     for (let z = 0; z < -1-e; z++) tick += "0";

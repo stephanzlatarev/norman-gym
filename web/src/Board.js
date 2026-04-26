@@ -282,16 +282,48 @@ function getGroupDisplay(skill, groupName) {
 }
 
 function getAttributeDisplay(skill, groupName, displayProperty) {
-  const attributeName = displayProperty;
+  if (!displayProperty) return { attribute: undefined, observe: -1, act: -1 };
+
+  const parts = displayProperty.split(".");
+  const attributeName = parts[0];
+  const axisName = parts[1];
+
   const observeAttributes = skill.observe[groupName]?.attributes || [];
-  const observeAttributesIndex = observeAttributes.findIndex(attribute => (attribute.name === attributeName));
   const actAttributes = skill.act[groupName]?.attributes || [];
-  const actAttributesIndex = actAttributes.findIndex(attribute => (attribute.name === attributeName));
+
+  // Compute flat tuple offset for observe
+  let observeOffset = -1;
+  let flatOffset = 0;
+  for (const attr of observeAttributes) {
+    if (attr.name === attributeName) {
+      const axisIndex = (axisName && attr.axes) ? attr.axes.indexOf(axisName) : 0;
+      observeOffset = flatOffset + axisIndex;
+      break;
+    }
+    flatOffset += (attr.type === "space" && attr.axes) ? attr.axes.length : 1;
+  }
+
+  // Compute flat tuple offset for act
+  let actOffset = -1;
+  let actFlatOffset = 0;
+  for (const attr of actAttributes) {
+    const observeAttr = observeAttributes.find(a => a.name === attr.name);
+    if (attr.name === attributeName && observeAttr) {
+      const axisIndex = (axisName && observeAttr.axes) ? observeAttr.axes.indexOf(axisName) : 0;
+      actOffset = actFlatOffset + axisIndex;
+      break;
+    }
+    if (observeAttr) {
+      actFlatOffset += (observeAttr.type === "space" && observeAttr.axes) ? observeAttr.axes.length : 1;
+    } else {
+      actFlatOffset += 1;
+    }
+  }
 
   return {
-    attribute: observeAttributes[observeAttributesIndex],
-    observe: observeAttributesIndex,
-    act: actAttributesIndex,
+    attribute: observeAttributes.find(a => a.name === attributeName),
+    observe: observeOffset,
+    act: actOffset,
   };
 }
 

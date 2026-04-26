@@ -84,6 +84,21 @@ function validateSkill(skill) {
             errors.push(`Observe group "${groupName}", attribute "${attr.name}": range min must be less than max.`);
         }
 
+        if (resolvedType === "space") {
+          if (!Array.isArray(attr.axes) || attr.axes.length === 0)
+            errors.push(`Observe group "${groupName}", attribute "${attr.name}": space attributes must have a non-empty axes array.`);
+          else {
+            const axisNames = new Set();
+            for (const axis of attr.axes) {
+              if (typeof axis !== "string" || !axis.trim())
+                errors.push(`Observe group "${groupName}", attribute "${attr.name}": each axis must be a non-empty string.`);
+              if (axisNames.has(axis))
+                errors.push(`Observe group "${groupName}", attribute "${attr.name}": duplicate axis name "${axis}".`);
+              axisNames.add(axis);
+            }
+          }
+        }
+
         if (resolvedType === "label") {
           if (!Array.isArray(attr.options) || attr.options.length < 2)
             errors.push(`Observe group "${groupName}", attribute "${attr.name}": options must have at least 2 entries.`);

@@ -2,10 +2,11 @@ import tf from "../tf.js";
 
 // Performs the attention computation given pre-projected Q, K, V tensors.
 // Config: { objectWidth, attentionHeads, attentionGroups, dropoutRate, spatialAxes }
-// Inputs: [Q, K, V] or [Q, K, V, coords]
+// Inputs: [Q, K, V, mask] or [Q, K, V, mask, coords]
 //   Q: (batch, seq, attentionHeads * headDim)
 //   K: (batch, seq, attentionGroups * headDim)
 //   V: (batch, seq, attentionGroups * headDim)
+//   mask: (batch, seq) — 1.0 for real objects, 0.0 for padding
 //   coords (optional): (batch, seq, spatialAxes) — raw spatial coordinates for RoPE
 // Output: (batch, seq, attentionHeads * headDim)
 export default class GroupedQueryAttention extends tf.layers.Layer {
@@ -21,7 +22,7 @@ export default class GroupedQueryAttention extends tf.layers.Layer {
   }
 
   computeOutputShape(inputShape) {
-    // inputShape is an array of shapes: [Q_shape, K_shape, V_shape] or [Q, K, V, coords]
+    // inputShape is an array of shapes: [Q_shape, K_shape, V_shape, mask_shape, ...]
     return inputShape[0];
   }
 
@@ -41,8 +42,8 @@ export default class GroupedQueryAttention extends tf.layers.Layer {
 
   call(inputs, kwargs) {
     return tf.tidy(() => {
-      const [rawQ, rawK, rawV] = inputs;
-      const coords = inputs.length > 3 ? inputs[3] : null;
+      const [rawQ, rawK, rawV, mask] = inputs;
+      const coords = inputs.length > 4 ? inputs[4] : null;
       const training = kwargs && kwargs.training;
       const [batch, seq] = rawQ.shape;
 
@@ -63,6 +64,12 @@ export default class GroupedQueryAttention extends tf.layers.Layer {
 
       const scale = Math.sqrt(this.headDim);
       let scores = Q.matMul(K.transpose([0, 1, 3, 2])).div(scale);
+
+      // Apply padding mask: set padding key positions to -Infinity so softmax gives them zero weight
+      // mask shape: (batch, seq) → (batch, 1, 1, seq) to broadcast over (batch, heads, querySeq, keySeq)
+      const maskBias = tf.scalar(1).sub(mask).mul(-1e9); // 0 for real, -1e9 for padding
+      scores = scores.add(maskBias.reshape([batch, 1, 1, seq]));
+
       let weights = scores.softmax(-1);
 
       if (training && this.dropoutRate > 0) {

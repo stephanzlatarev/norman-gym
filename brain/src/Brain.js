@@ -74,13 +74,15 @@ export default class Brain {
 
     const data = encodeBatch(this.meta, this.skill, samples);
     const numInputs = this.model.inputs.length;
+    const numOutputs = this.meta.outputNames.length;
     const inputs = data.slice(0, numInputs);
-    const targets = data.slice(numInputs);
+    const targets = data.slice(numInputs, numInputs + numOutputs);
+    const sampleWeights = data.slice(numInputs + numOutputs);
 
-    const result = this.model.evaluate(inputs, targets, { batchSize: samples.length });
+    const result = this.model.evaluate(inputs, targets, { batchSize: samples.length, sampleWeights });
 
     const values = Array.isArray(result) ? result : [result];
-    const loss = values[0].dataSync()[0] / this.meta.outputNames.length;
+    const loss = values[0].dataSync()[0] / numOutputs;
 
     tf.engine().endScope();
 
@@ -101,10 +103,17 @@ function compile(brain) {
     brain.config.clipNorm ?? 1.0
   );
 
+  // Build sampleWeightMode map: 'temporal' for each output to enable per-object weighting
+  const sampleWeightModes = {};
+  for (const name of brain.meta.outputNames) {
+    sampleWeightModes[name] = "temporal";
+  }
+
   brain.model.compile({
     optimizer: optimizer,
     loss: brain.meta.lossMap,
     lossWeights: undefined,
+    sampleWeightModes,
   });
 
   brain.fit = brain.model.makeTrainFunction();

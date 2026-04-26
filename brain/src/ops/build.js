@@ -10,7 +10,7 @@ import computeMetadata from "./meta.js";
 
 // --- Transformer block wiring (functional API) ---
 
-function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config, coords, spatialAxes) {
+function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config, mask, coords, spatialAxes) {
   const p = `block${blockIdx}`;
   const headDim = objectWidth / config.attentionHeads;
 
@@ -22,8 +22,8 @@ function buildTransformerBlock(input, blockIdx, objectWidth, brainWidth, config,
   let K = tf.layers.dense({ units: config.attentionGroups * headDim, name: `${p}_K` }).apply(normed);
   let V = tf.layers.dense({ units: config.attentionGroups * headDim, name: `${p}_V` }).apply(normed);
 
-  // GQA attention with optional RoPE
-  const gqaInputs = coords ? [Q, K, V, coords] : [Q, K, V];
+  // GQA attention with mask and optional RoPE
+  const gqaInputs = coords ? [Q, K, V, mask, coords] : [Q, K, V, mask];
   let attnOut = new GroupedQueryAttention({
     objectWidth,
     attentionHeads: config.attentionHeads,
@@ -251,9 +251,13 @@ export default function build(skill, config) {
     coordsTensor = coordsInput;
   }
 
+  // Build padding mask input: (batch, totalObjects) — 1.0 for real, 0.0 for padding
+  const maskInput = tf.input({ shape: [totalObjects], name: "padding_mask", dtype: "float32" });
+  allInputs.push(maskInput);
+
   // Stack transformer blocks using standard functional API layers
   for (let i = 0; i < config.brainLayers; i++) {
-    allObjects = buildTransformerBlock(allObjects, i, objectWidth, brainWidth, config, coordsTensor, spatialAxes);
+    allObjects = buildTransformerBlock(allObjects, i, objectWidth, brainWidth, config, maskInput, coordsTensor, spatialAxes);
   }
 
   // Final layer norm

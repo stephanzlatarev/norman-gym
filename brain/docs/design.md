@@ -199,8 +199,9 @@ src/
       GroupPositionalEncoding.js   # Fixed sinusoidal group-level positional encoding
       CreateObjects.js            # Learned embeddings for create objects
       SliceObjects.js             # Slices a group's objects from the sequence dimension
-      GroupedQueryAttention.js    # Grouped Query Attention with multi-axis RoPE
-                                    #   (reshape, rotate Q/K, scale, softmax)
+      GroupedQueryAttention.js    # Grouped Query Attention with padding mask
+                                    #   and multi-axis RoPE (reshape, mask,
+                                    #   rotate Q/K, scale, softmax)
       FinalLayerNorm.js           # Final layer normalization before output heads
 
     # Operation functions
@@ -258,3 +259,37 @@ All three files (`model.json`, `weights.bin`, `brain.tf`) are stored in GridFS k
 ### Decision
 
 Build a single `tf.LayersModel` using the functional API. All components (encoders, mixer, transformer blocks, output heads) are wired as layers within one graph via `.apply()` calls. Each act attribute produces a separate named output tensor (e.g., "marks_row_out", "marks_col_out", "marks_player_out"), and each observe attribute has a named input tensor (e.g., "marks_row_in", "marks_col_in", "marks_player_in"). The _in/_out suffix disambiguates inputs from outputs while keeping group and attribute names first for readability. This enables per-output loss functions during `compile()` — `meanSquaredError` for space/scalar outputs and `categoricalCrossentropy` for label outputs (with one-hot encoded targets). The wrapper class holds this single model and provides the grouped I/O interface (accepting nested JS objects, returning grouped outputs) by flattening/unflattening around the model's named tensor inputs/outputs. Custom layers are registered at module load time. The `save()`/`load()` methods delegate directly to the underlying `tf.LayersModel`.
+
+---
+
+## Decision 8: Padding Mask
+
+Each observe group has a fixed `limit`, but actual samples may contain fewer objects. Padding slots are filled with zeros, which are indistinguishable from real objects at coordinate (0, 0). This creates two problems:
+
+1. **Attention contamination**: Padding objects participate in self-attention. Even with small attention weights, they bleed information into real objects — the model cannot achieve zero attention to padding because softmax never produces exact zeros.
+2. **Loss dilution**: MSE/cross-entropy is averaged over all output slots including padding. Padding slots contribute easy near-zero loss, masking the true error on real objects. Reported loss appears lower than actual performance.
+
+### Options
+
+**A. Out-of-range padding values**
+- Pad with values outside the attribute's `[min, max]` range (e.g., -1). The sinusoidal encoding produces distinct features, and the model learns to ignore them.
+- Zero architecture changes. Approximate — some attention still leaks.
+
+**B. Padding mask in attention + sample weights in loss**
+- A `padding_mask` input tensor `(batch, totalObjects)` with 1.0 for real objects and 0.0 for padding.
+- In `GroupedQueryAttention`, add `-1e9` bias to attention logits at padding key positions before softmax, making their attention weight mathematically zero.
+- Per-output sample weight tensors `(batch, outputObjects)` zero out the loss contribution of padding output slots.
+- Perfect isolation — padding is invisible to both attention and loss.
+
+### Decision: Option B
+
+A `padding_mask` input `(batch, totalObjects)` is added to the model. It is built by `flattenInput` from the actual object counts in each group (tracked by `encodeObservation`). Create objects always have mask value 1.0.
+
+**Attention masking**: `GroupedQueryAttention` receives the mask as its 4th input (before optional RoPE coords). It converts `(1 - mask) * -1e9` into a bias tensor `(batch, 1, 1, seq)` added to the attention logits before softmax. This gives padding keys exactly zero attention weight across all heads.
+
+**Loss masking**: `encodeBatch` produces per-output sample weight tensors using `sampleWeightMode: 'temporal'`. For modify groups, weights are 1.0 for observed objects and 0.0 for padding slots up to the limit. For create groups, all slots have weight 1.0. The model is compiled with `sampleWeightModes` set to `'temporal'` for every output, and `model.evaluate()` receives the same weights so that `measure()` reports loss on real objects only.
+
+This ensures that:
+- Padding objects cannot influence real objects through attention
+- The loss reflects only real-object prediction quality
+- The reported loss is directly comparable across samples with different object counts

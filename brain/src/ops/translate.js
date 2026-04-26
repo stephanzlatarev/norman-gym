@@ -2,10 +2,12 @@ import tf from "../tf.js";
 
 export function encodeObservation(meta, skill, observation) {
   const input = {};
+  const counts = {};
 
   for (const group of meta.groups) {
     const objects = observation[group.name] || [];
     input[group.name] = {};
+    counts[group.name] = objects.length;
 
     for (let ai = 0; ai < group.observeAttributes.length; ai++) {
       const attr = group.observeAttributes[ai];
@@ -41,6 +43,8 @@ export function encodeObservation(meta, skill, observation) {
       }
     }
   }
+
+  input._counts = counts;
 
   return input;
 }
@@ -95,11 +99,13 @@ export function encodeAction(meta, skill, action) {
 export function encodeBatch(meta, skill, samples) {
   const inputArrays = [];
   const targetArrays = [];
+  const weightArrays = [];
 
   for (const sample of samples) {
     const input = encodeObservation(meta, skill, sample.observe);
     inputArrays.push(flattenInput(meta, input));
     targetArrays.push(encodeAction(meta, skill, sample.act));
+    weightArrays.push(encodeSampleWeights(meta, skill, sample.observe));
   }
 
   const flatInputs = inputArrays[0].map((_, i) =>
@@ -108,12 +114,47 @@ export function encodeBatch(meta, skill, samples) {
   const flatTargets = targetArrays[0].map((_, i) =>
     tf.concat(targetArrays.map(a => a[i]), 0)
   );
+  const flatWeights = weightArrays[0].map((_, i) =>
+    tf.concat(weightArrays.map(a => a[i]), 0)
+  );
 
   // Dispose per-sample tensors
   for (const arr of inputArrays) arr.forEach(t => t.dispose());
   for (const arr of targetArrays) arr.forEach(t => t.dispose());
+  for (const arr of weightArrays) arr.forEach(t => t.dispose());
 
-  return [...flatInputs, ...flatTargets];
+  return [...flatInputs, ...flatTargets, ...flatWeights];
+}
+
+function encodeSampleWeights(meta, skill, observation) {
+  const weights = [];
+
+  for (const group of meta.groups) {
+    if (!skill.act[group.name]) continue;
+
+    const observedCount = (observation[group.name] || []).length;
+    const modifyCount = group.modify ? Math.min(observedCount, group.limit) : 0;
+    const values = [];
+
+    // Modify slots: real up to modifyCount, padding after
+    if (group.modify) {
+      for (let i = 0; i < group.limit; i++) {
+        values.push(i < modifyCount ? 1.0 : 0.0);
+      }
+    }
+
+    // Create slots are always real
+    for (let i = 0; i < group.create; i++) {
+      values.push(1.0);
+    }
+
+    // One weight tensor per output attribute (same mask for all attributes in the group)
+    for (const attr of group.actAttributes) {
+      weights.push(tf.tensor2d([values], [1, group.outputObjects]));
+    }
+  }
+
+  return weights;
 }
 
 export function decodeAction(meta, skill, pred, observation = {}) {
@@ -196,6 +237,34 @@ export function flattenInput(meta, input) {
       : tf.concat(coordParts, 1); // (batch, totalObjects, spatialAxes)
     flatInputs.push(coords);
   }
+
+  // Build padding mask: (batch, totalObjects) — 1.0 for real, 0.0 for padding
+  const batchSize = flatInputs[0].shape[0];
+  const counts = input._counts;
+  const maskParts = [];
+
+  for (const group of meta.groups) {
+    const count = counts ? (counts[group.name] || 0) : group.limit;
+    const ones = count > 0 ? tf.ones([batchSize, count]) : null;
+    const zeros = count < group.limit ? tf.zeros([batchSize, group.limit - count]) : null;
+    if (ones && zeros) {
+      maskParts.push(tf.concat([ones, zeros], 1));
+    } else if (ones) {
+      maskParts.push(ones);
+    } else {
+      maskParts.push(zeros);
+    }
+  }
+
+  // Create objects are always real (not padding)
+  if (meta.totalCreateObjects > 0) {
+    maskParts.push(tf.ones([batchSize, meta.totalCreateObjects]));
+  }
+
+  const mask = maskParts.length === 1
+    ? maskParts[0]
+    : tf.concat(maskParts, 1); // (batch, totalObjects)
+  flatInputs.push(mask);
 
   return flatInputs;
 }

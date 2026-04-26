@@ -70,26 +70,13 @@ export default class Brain {
   }
 
   measure(samples) {
-    tf.engine().startScope();
-
-    const data = encodeBatch(this.meta, this.skill, samples);
-    const numInputs = this.model.inputs.length;
-    const numOutputs = this.meta.outputNames.length;
-    const inputs = data.slice(0, numInputs);
-    const targets = data.slice(numInputs, numInputs + numOutputs);
-    const sampleWeights = data.slice(numInputs + numOutputs);
-
-    const result = this.model.evaluate(inputs, targets, { batchSize: samples.length, sampleWeights });
-
-    const values = Array.isArray(result) ? result : [result];
-    const loss = values[0].dataSync()[0] / numOutputs;
-
-    tf.engine().endScope();
-
-    return loss;
+    const perSample = this.measurePerSample(samples);
+    return perSample.reduce((s, v) => s + v, 0) / perSample.length;
   }
 
-  // Returns a Float64Array of per-sample weighted losses
+  // Returns an array of per-sample loss values in [0, 1]
+  // Space/scalar: mean absolute error normalized by range
+  // Label: 0 if correct, 1 if wrong
   measurePerSample(samples) {
     return tf.tidy(() => {
       const data = encodeBatch(this.meta, this.skill, samples);
@@ -102,18 +89,32 @@ export default class Brain {
       const predictions = this.model.predict(inputs, { batchSize: samples.length });
       const predArray = Array.isArray(predictions) ? predictions : [predictions];
 
-      // Compute weighted MSE per sample for each output, then average across outputs
       const perSampleParts = [];
-      for (let i = 0; i < numOutputs; i++) {
-        // squared error: (batch, objects, units)
-        const se = predArray[i].sub(targets[i]).square();
-        // mean over units (last axis): (batch, objects)
-        const msePerObject = se.mean(-1);
-        // multiply by sample weights: (batch, objects)
-        const weighted = msePerObject.mul(weights[i]);
-        // mean over objects: (batch,)
-        const perSample = weighted.mean(-1);
-        perSampleParts.push(perSample);
+      let idx = 0;
+      for (const group of this.meta.groups) {
+        if (!this.skill.act[group.name]) continue;
+        for (const attr of group.actAttributes) {
+          const pred = predArray[idx];
+          const target = targets[idx];
+          const weight = weights[idx];
+
+          let errorPerObject;
+          if (attr.type === "label") {
+            // 0 if argmax matches, 1 otherwise
+            const predClass = pred.argMax(-1);   // (batch, objects)
+            const trueClass = target.argMax(-1);  // (batch, objects)
+            errorPerObject = predClass.notEqual(trueClass).cast("float32");
+          } else {
+            // Mean absolute error per object (pred and target already in [0,1])
+            errorPerObject = pred.sub(target).abs().mean(-1); // (batch, objects)
+          }
+
+          // Apply sample weights and mean over objects: (batch,)
+          const weighted = errorPerObject.mul(weight);
+          perSampleParts.push(weighted.mean(-1));
+
+          idx++;
+        }
       }
 
       // Average across outputs: (batch,)

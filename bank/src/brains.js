@@ -43,4 +43,7 @@ export async function updateBrain(brain, data) {
 
 export async function resetBrain(brain) {
   await deleteFiles(KIND_BRAIN, brain);
+
+  const brains = await collection("brains");
+  await brains.updateOne({ brain }, { $unset: { loss: "", time: "" } });
 }

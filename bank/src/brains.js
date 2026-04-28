@@ -1,4 +1,4 @@
-import { collection, deleteFiles, downloadFile, uploadFile } from "./db.js";
+import { collection, copyFiles, deleteFiles, downloadFile, uploadFile } from "./db.js";
 
 const KIND_BRAIN = "brain";
 
@@ -46,4 +46,16 @@ export async function resetBrain(brain) {
 
   const brains = await collection("brains");
   await brains.updateOne({ brain }, { $unset: { loss: "", time: "" } });
+}
+
+export async function cloneBrain(source, target) {
+  await copyFiles(KIND_BRAIN, source, target);
+
+  const brains = await collection("brains");
+  const original = await brains.findOne({ brain: source });
+
+  const data = { ...original, brain: target };
+  delete data._id;
+
+  await brains.updateOne({ brain: target }, { $set: data }, { upsert: true });
 }

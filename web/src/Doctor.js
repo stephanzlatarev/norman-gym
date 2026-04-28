@@ -1,5 +1,6 @@
 import React from "react";
 import IconButton from "@mui/material/IconButton";
+import IconContentCopy from "@mui/icons-material/ContentCopy";
 import IconRestartAlt from "@mui/icons-material/RestartAlt";
 import Api from "./Api";
 
@@ -15,7 +16,7 @@ export default class Doctor extends React.Component {
 
     this.state = {
       brains: [],
-      resetting: null,
+      busy: 0,
     };
   }
 
@@ -37,11 +38,32 @@ export default class Doctor extends React.Component {
 }
 
 async function resetBrain(component, brain) {
-  component.setState({ resetting: brain });
+  component.setState(state => ({ busy: state.busy + 1 }));
 
   await Api.post({}, "brains", brain, "reset");
 
-  component.setState({ resetting: null });
+  component.setState(state => ({ busy: state.busy - 1 }));
+}
+
+function cloneName(brain, existingBrains) {
+  const match = brain.match(/^(.*?)-(\d+)$/);
+  const base = match ? match[1] : brain;
+  let num = match ? Number(match[2]) + 1 : 1;
+
+  const names = new Set(existingBrains.map(b => b.brain));
+  while (names.has(base + "-" + num)) num++;
+
+  return base + "-" + num;
+}
+
+async function cloneBrain(component, brain) {
+  const target = cloneName(brain, component.state.brains);
+
+  component.setState(state => ({ busy: state.busy + 1 }));
+
+  await Api.post({ target }, "brains", brain, "clone");
+
+  component.setState(state => ({ busy: state.busy - 1 }));
 }
 
 function renderBrains(component) {
@@ -56,8 +78,15 @@ function renderBrains(component) {
       <td style={ CENTER }>
         <IconButton
           size="small"
+          disabled={ component.state.busy > 0 }
+          onClick={ () => cloneBrain(component, one.brain) }
+        >
+          <IconContentCopy />
+        </IconButton>
+        <IconButton
+          size="small"
           color="error"
-          disabled={ component.state.resetting === one.brain }
+          disabled={ component.state.busy > 0 }
           onClick={ () => resetBrain(component, one.brain) }
         >
           <IconRestartAlt />

@@ -119,3 +119,17 @@ export async function deleteFiles(kind, key) {
     await bucket.delete(file._id);
   }
 }
+
+export async function copyFiles(kind, sourceKey, targetKey) {
+  const bucket = new GridFSBucket(await connect());
+  const cursor = bucket.find({ "metadata.kind": kind, "metadata.key": sourceKey });
+
+  for await (const file of cursor) {
+    const name = file.metadata.name;
+    const dbpath = kind + "/" + targetKey + "/" + name;
+    const source = bucket.openDownloadStream(file._id);
+    const target = bucket.openUploadStream(dbpath, { metadata: { kind, key: targetKey, name, version: Date.now() } });
+
+    await pipelineAsync(source.pipe(target));
+  }
+}

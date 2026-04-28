@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
 import express from "express";
 import { list, stats } from "@norman-gym/bank/db.js";
-import { downloadBrain, resetBrain, FILE_BRAIN } from "@norman-gym/bank/brains.js";
+import { downloadBrain, cloneBrain, resetBrain, FILE_BRAIN } from "@norman-gym/bank/brains.js";
 import { consumeEvent, sendEvent } from "@norman-gym/bank/events.js";
 import { syncSkill } from "@norman-gym/bank/skills.js";
 import { writeTrainer } from "@norman-gym/bank/trainers.js";
@@ -69,6 +69,23 @@ app.post("/api/brains/:brain/reset", async (request, response) => {
     await resetBrain(brain);
 
     return sendResponse(response, { status: "OK" });
+  } catch (error) {
+    return sendError(response, { status: "ERROR", details: error?.message || error });
+  }
+});
+
+app.post("/api/brains/:brain/clone", async (request, response) => {
+  try {
+    const brain = request.params.brain;
+    const target = request.body?.target;
+
+    if (!brain || !target) {
+      return sendError(response, { status: "ERROR", details: "Brain name and target name are required" });
+    }
+
+    await cloneBrain(brain, target);
+
+    return sendResponse(response, { status: "OK", details: { brain: target } });
   } catch (error) {
     return sendError(response, { status: "ERROR", details: error?.message || error });
   }

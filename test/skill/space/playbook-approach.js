@@ -6,8 +6,11 @@ export default function() {
   let b = getRandomPosition();
 
   const ad = distance(actor, a);
-  while (Math.abs(distance(actor, b) - ad) < 4) {
+  let bd = distance(actor, b);
+
+  while (Math.abs(ad - bd) < 4) {
     b = getRandomPosition();
+    bd = distance(actor, b);
   }
 
   const c = (ad < distance(actor, b)) ? a : b;
@@ -31,5 +34,5 @@ function getRandomPosition() {
 }
 
 function distance(a, b) {
-  return ((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+  return Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
 }

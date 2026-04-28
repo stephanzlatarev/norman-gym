@@ -38,5 +38,13 @@ act:
 playbooks:
   open: playbook-open.js
   fork: playbook-fork.js
+  defend: playbook-defend.js
+  force: playbook-force.js
   block: playbook-block.js
   win: playbook-win.js
+
+display:
+  marks:
+    icon: player
+    x: col
+    y: row

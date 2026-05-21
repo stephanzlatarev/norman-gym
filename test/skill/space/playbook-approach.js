@@ -1,15 +1,15 @@
 
 export default function() {
-  const actor = getRandomPosition();
+  const actor = getRandomPosition(50, 50, 50);
 
-  let a = getRandomPosition();
-  let b = getRandomPosition();
+  let a = getRandomPosition(actor.x, actor.y, 20);
+  let b = getRandomPosition(actor.x, actor.y, 20);
 
   const ad = distance(actor, a);
   let bd = distance(actor, b);
 
-  while (Math.abs(ad - bd) < 4) {
-    b = getRandomPosition();
+  while (Math.abs(ad - bd) <= 1) {
+    b = getRandomPosition(actor.x, actor.y, 20);
     bd = distance(actor, b);
   }
 
@@ -17,7 +17,7 @@ export default function() {
 
   return {
     observe: {
-      actors: [ [actor.x, actor.y, 0, 0] ],
+      actors: [ [actor.x, actor.y, random(50, 50), random(50, 50)] ],
       targets: [ [a.x, a.y], [b.x, b.y] ],
     },
     act: {
@@ -26,10 +26,26 @@ export default function() {
   };
 }
 
-function getRandomPosition() {
+function random(value, delta) {
+  let min = value - delta;
+  let max = value + delta;
+
+  if (min < 0) {
+    min = 0;
+    max = delta + delta;
+  } else if (max > 100) {
+    min = 100 - delta - delta;
+    max = 100;
+  }
+
+  const value = min + (Math.random() * (max - min));
+  return Number(value.toFixed(2));
+}
+
+function getRandomPosition(x, y, d) {
   return {
-    x: Math.random() * 100,
-    y: Math.random() * 100,
+    x: random(x, d),
+    y: random(y, d),
   };
 }
 

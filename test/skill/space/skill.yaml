@@ -33,8 +33,10 @@ act:
       - name: target
 
 playbooks:
+
   # The playbook teaches that 1 actor should approach the closest of 2 targets
-  # Check if this is sufficient to learn that multiple actors should approach the closest of many targets
+  # This is confirmed to learn that multiple actors should each approach their closest of many targets
+  # The samples have 1 actor and 2 targets and the model performs well with 3 actors and 3 targets
   approach: playbook-approach.js
 
 display:

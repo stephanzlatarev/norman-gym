@@ -152,23 +152,26 @@ function measure() {
 
   let lossSum = 0;
   let lossCount = 0;
-  const allPerSample = [];
+
+  const allMean = [];
+  const allMax = [];
 
   for (const [name, generator] of Object.entries(skill.playbooks)) {
     const samples = createSamples({ playbook: generator }, config.measureBatchSize);
-    const measurement = brain.measure(samples);
-    const perSample = brain.measurePerSample(samples);
+    const { mean: perMean, max: perMax } = brain.measure(samples);
+    const measurement = perMean.reduce((s, v) => s + v, 0) / perMean.length;
 
     loss[name] = measurement;
-    accuracy[name] = percentileBuckets(perSample);
+    accuracy[name] = { mean: percentileBuckets(perMean), max: percentileBuckets(perMax) };
 
     lossSum += measurement;
     lossCount++;
-    allPerSample.push(...perSample);
+    allMean.push(...perMean);
+    allMax.push(...perMax);
   }
 
   loss.overall = lossSum / lossCount;
-  accuracy.overall = percentileBuckets(allPerSample);
+  accuracy.overall = { mean: percentileBuckets(allMean), max: percentileBuckets(allMax) };
 
   return { loss, accuracy };
 }

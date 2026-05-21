@@ -65,7 +65,7 @@ async function getWorstSample() {
   let maxLoss = -Infinity;
 
   for (const sample of samples) {
-    const loss = player.measure([sample]);
+    const loss = player.measure([sample]).mean[0];
 
     if (loss > maxLoss) {
       maxLoss = loss;

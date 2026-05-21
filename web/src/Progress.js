@@ -9,14 +9,44 @@ export default class Progress extends React.Component {
     if (!this.props.visible) return null;
     if (!this.props.progress || !this.props.indicator) return null;
 
-    let y = pery;
-    let tick = pert;
+    // Collect all valid primary values and find last
+    const values = [];
+    let lastValue = null;
+    for (const point of this.props.progress) {
+      const v = point[this.props.indicator];
+      if (v >= 0) { values.push(v); lastValue = v; }
+    }
+
+    let y, ticks;
 
     if (this.props.type === "log") {
-      const e = exponent(this.props.progress, this.props.indicator);
+      const e = lastValue > 0 ? Math.floor(Math.log10(lastValue)) : 0;
+      const fitsIn = (lo, hi) => values.every(v => v <= 0 || (Math.log10(v) >= lo && Math.log10(v) <= hi));
 
-      y = (y) => logy(y, e);
-      tick = (y) => logt(e - y);
+      let exponents;
+      if (fitsIn(e, e + 1)) exponents = [e + 1, e];
+      else if (fitsIn(e - 1, e + 1)) exponents = [e + 1, e, e - 1];
+      else exponents = [e + 2, e + 1, e, e - 1];
+
+      const top = exponents[0], bottom = exponents[exponents.length - 1];
+      y = (v) => clampY((top - Math.log10(v)) / (top - bottom) * HEIGHT);
+      ticks = exponents.map(exp => logt(exp));
+    } else {
+      const center = lastValue != null ? lastValue : 0.5;
+      const fitsIn = (lo, hi) => values.every(v => v >= lo && v <= hi);
+
+      let gridValues;
+      if (fitsIn(center - 0.5 * PER_STEP, center + 0.5 * PER_STEP)) {
+        gridValues = [center + 0.5 * PER_STEP, center - 0.5 * PER_STEP];
+      } else if (fitsIn(center - PER_STEP, center + PER_STEP)) {
+        gridValues = [center + PER_STEP, center, center - PER_STEP];
+      } else {
+        gridValues = [center + 1.5 * PER_STEP, center + 0.5 * PER_STEP, center - 0.5 * PER_STEP, center - 1.5 * PER_STEP];
+      }
+
+      const top = gridValues[0], bottom = gridValues[gridValues.length - 1];
+      y = (v) => clampY((top - v) / (top - bottom) * HEIGHT);
+      ticks = gridValues.map(v => Math.round(v * 100) + "%");
     }
 
     const xstep = WIDTH / (this.props.progress.length - 1);
@@ -39,13 +69,14 @@ export default class Progress extends React.Component {
     }
 
     const grid = [];
-    for (let y = 0; y <= HEIGHT; y++) {
-      grid.push(<line key={ "gl" + y } x1="0" y1={ y } x2={ WIDTH } y2={ y } />);
-      grid.push(<text key={ "gt" + y } x="0" y={ y + 0.6 }>{ tick(y) }</text>);
+    for (let i = 0; i < ticks.length; i++) {
+      const gy = i * HEIGHT / (ticks.length - 1);
+      grid.push(<line key={ "gl" + i } x1="0" y1={ gy } x2={ WIDTH } y2={ gy } />);
+      grid.push(<text key={ "gt" + i } x="0" y={ gy + 0.6 }>{ ticks[i] }</text>);
     }
 
     return (
-      <svg width="500" height="300" viewBox={ "0 0 " + WIDTH + " " + HEIGHT } preserveAspectRatio="none">
+      <svg width="400" height="150" viewBox={ "0 0 " + WIDTH + " " + HEIGHT } preserveAspectRatio="none">
         <g style={{ stroke: "gray", strokeWidth: 0.01, fontSize: 0.3 }}>
           { grid }
         </g>
@@ -62,30 +93,11 @@ export default class Progress extends React.Component {
   }
 }
 
-function exponent(progress, indicator) {
-  let min = Infinity;
-  let max = -Infinity;
+const PER_STEP = 0.1;
 
-  for (const point of progress) {
-    const p = point[indicator];
-
-    if (p >= 0) {
-      min = Math.min(min, p);
-      max = Math.max(max, point[indicator]);
-    }
-  }
-
-  min = Math.ceil(Math.log10(min) + 3);
-  max = Math.floor(Math.log10(max));
-
-  return Math.min(min, max);
-}
-
-function logy(value, e) {
-  const y = e - Math.log10(value) + 1;
-
+function clampY(y) {
   if (y < 0) return 0;
-  if (y > 5) return 5;
+  if (y > HEIGHT) return HEIGHT;
   return y;
 }
 
@@ -104,13 +116,4 @@ function logt(e) {
   }
 
   return "-";
-}
-
-function pery(value) {
-  if (value < 0) return 0;
-  return 5 - Math.min(value * 5, 5);
-}
-
-function pert(y) {
-  return (y >= 0) ? Math.floor(100 - y * 20) + "%" : "-";
 }

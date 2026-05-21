@@ -38,8 +38,8 @@ function random(value, delta) {
     max = 100;
   }
 
-  const value = min + (Math.random() * (max - min));
-  return Number(value.toFixed(2));
+  const result = min + (Math.random() * (max - min));
+  return Number(result.toFixed(2));
 }
 
 function getRandomPosition(x, y, d) {

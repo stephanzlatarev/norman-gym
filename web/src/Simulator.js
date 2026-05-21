@@ -1,6 +1,7 @@
 import React from "react";
 import Button from "@mui/material/Button";
 import IconSkipNext from "@mui/icons-material/SkipNext";
+import IconPlayArrow from "@mui/icons-material/PlayArrow";
 import IconTrendingDown from "@mui/icons-material/TrendingDown";
 import LinearProgress from "@mui/material/LinearProgress";
 import Api from "./Api";
@@ -17,6 +18,7 @@ export default class Simulator extends React.Component {
       skill: null,
       step: null,
       merged: null,
+      observation: "{}",
       simulation: null,
     };
   }
@@ -42,6 +44,7 @@ export default class Simulator extends React.Component {
     if (simulation && (this.state.merged !== this.state.step)) {
       this.state.skill = this.state.skills.find(one => (one.skill === simulation.skill));
       this.state.simulation = simulation;
+      this.state.observation = pretty(simulation.observation);
       this.state.merged = this.state.step;
     }
 
@@ -51,6 +54,10 @@ export default class Simulator extends React.Component {
 
         Brain: space
         <br/>
+
+        <Button size="small" onClick={ play.bind(this) } disabled={ progressing }>
+          <IconPlayArrow /> Play
+        </Button>
 
         <Button size="small" onClick={ step.bind(this) } disabled={ progressing }>
           <IconSkipNext /> Step
@@ -65,7 +72,7 @@ export default class Simulator extends React.Component {
         <div style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", marginTop: "1rem", flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 20rem", minWidth: "18rem" }}>
             <textarea
-              value={ pretty(this.state.simulation?.observation) }
+              value={ this.state.observation }
               onChange={ this.updateObservation.bind(this) }
               style={{ width: "100%", minHeight: "20rem", boxSizing: "border-box", fontFamily: "monospace", fontSize: "0.95rem" }}
             />
@@ -88,13 +95,26 @@ export default class Simulator extends React.Component {
   }
 }
 
+async function play() {
+  if (this.state.step) {
+    await Api.delete("events", this.state.step);
+  }
+
+  const step = String(Math.random());
+  const observation = JSON.parse(this.state.observation);
+
+  await Api.post({ ref: step, brain: "space", type: "simulation-step", observation }, "events");
+
+  this.setState({ step });
+}
+
 async function step() {
   if (this.state.step) {
     await Api.delete("events", this.state.step);
   }
 
   const step = String(Math.random());
-  const observation = merge(this.state.simulation.observation, this.state.simulation.observation);
+  const observation = merge(this.state.simulation.observation, this.state.simulation.action);
 
   await Api.post({ ref: step, brain: "tic-tac-toe", type: "simulation-step", observation }, "events");
 
@@ -113,6 +133,7 @@ async function worst() {
   this.setState({ step });
 }
 
+// TODO: Append or replace objects in action, depending on the skill definition
 function merge(observation, action) {
   try {
     const simulation = { ...observation };

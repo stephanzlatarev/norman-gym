@@ -35,7 +35,7 @@ export default class Board extends React.Component {
 
       const modifiedCount = group.modify ? observedValues.length : 0;
 
-      assertEquals(group, updatedValues.length, expectedValues.length, "updated objects");
+      if (expectedValues.length) assertEquals(group, updatedValues.length, expectedValues.length, "updated objects");
       assertEquals(group, updatedValues.length, modifiedCount + group.create, "modified/created objects");
 
       // Process the observed and modified objects
@@ -102,6 +102,9 @@ function assertEquals(group, actual, expected, entity) {
 function resolveObject(group, object, values, property, objects, elements) {
   // Resolve object
   resolveValues(object, group, values, property);
+
+  // Skip it if there are no values to resolve with
+  if (!values) return;
 
   // Skip it if it cannot be displayed
   if (!Number.isFinite(object.x) && !Number.isFinite(object.y)) return;

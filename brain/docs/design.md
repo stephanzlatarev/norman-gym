@@ -312,3 +312,36 @@ Without normalization, targets in large ranges (e.g., [0, 100]) produce MSE grad
 - Label attributes are unaffected (they use one-hot encoding / cross-entropy).
 
 This keeps all continuous targets in a narrow [0, 1] range regardless of the skill's coordinate system, ensuring consistent gradient magnitude and full utilization of the learning rate.
+
+---
+
+## Decision 10: Learnable Attention Sharpness
+
+Standard softmax attention produces continuous probability weights over keys. For tasks requiring hard selection — e.g., outputting the coordinates of the closest target — the soft blending creates an irreducible error floor. Even when the model learns strong preferences, softmax saturates slowly and the output is always a weighted average rather than a clean copy.
+
+### Problem
+
+With standard scaled dot-product attention `softmax(QKᵀ / √d)`, the temperature is fixed at `1/√d`. The model can only sharpen attention indirectly by increasing the magnitude of Q and K vectors, which is constrained by layer normalization and gradient clipping. This limits the attention distribution to moderate sharpness, causing the model to blend information from attended keys rather than selecting one.
+
+### Solution: Per-head learnable sharpness
+
+Each attention head in `GroupedQueryAttention` gets a learnable scalar sharpness parameter α. The attention scores become:
+
+```
+softmax(QKᵀ / √d × α)
+```
+
+- α is parameterized as `softplus(raw)` to guarantee α > 0.
+- The raw parameter is initialized to `log(exp(1) - 1)` so that `softplus(raw) = 1.0`, recovering exact standard attention behavior at initialization.
+- Each head independently learns its sharpness — some heads may stay soft for aggregation tasks, while others push α high for selection tasks.
+- As α grows large, `softmax(scores × α)` approaches a one-hot distribution, enabling near-perfect hard selection.
+
+### Implementation
+
+In `GroupedQueryAttention.build()`:
+- Add a trainable weight `sharpness` of shape `[attentionHeads]`.
+
+In `GroupedQueryAttention.call()`:
+- After computing scaled dot-product scores and before applying the padding mask, multiply scores by `softplus(sharpness).reshape([1, attentionHeads, 1, 1])`.
+
+The sharpness parameter is per-head and per-block (each `GroupedQueryAttention` instance has its own). It participates in backpropagation normally — gradients flow through `softplus` and the score multiplication. The parameter is saved/loaded automatically as part of the layer's weights.

@@ -203,13 +203,15 @@ export function decodeAction(meta, skill, pred, observation = {}) {
           const [min, max] = attr.range;
           const range = max - min;
           for (let a = 0; a < attr.tupleWidth; a++) {
-            tuple.push(attrData[attr.name][i * attr.tupleWidth + a] * range + min);
+            const raw = Math.min(1, Math.max(0, attrData[attr.name][i * attr.tupleWidth + a]));
+            tuple.push(raw * range + min);
           }
         } else {
           // scalar: denormalize from [0,1] to [min,max]
           const [min, max] = attr.range;
           const range = max - min;
-          tuple.push(attrData[attr.name][i] * range + min);
+          const raw = Math.min(1, Math.max(0, attrData[attr.name][i]));
+          tuple.push(raw * range + min);
         }
       }
       tuples.push(tuple);

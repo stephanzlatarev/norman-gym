@@ -27,6 +27,14 @@ export default class GroupedQueryAttention extends tf.layers.Layer {
   }
 
   build(inputShape) {
+    // Learnable per-head sharpness: softplus(raw) multiplies scores before softmax.
+    // Initialized so softplus(raw) ≈ 1.0, recovering standard scaled dot-product attention.
+    const initVal = Math.log(Math.exp(1) - 1); // softplus inverse of 1.0
+    this.sharpnessRaw = this.addWeight(
+      "sharpness", [this.attentionHeads], "float32",
+      tf.initializers.constant({ value: initVal })
+    );
+
     // Precompute RoPE frequencies if spatial axes are present
     if (this.spatialAxes > 0) {
       const axisDim = this.headDim / this.spatialAxes;
@@ -64,6 +72,10 @@ export default class GroupedQueryAttention extends tf.layers.Layer {
 
       const scale = Math.sqrt(this.headDim);
       let scores = Q.matMul(K.transpose([0, 1, 3, 2])).div(scale);
+
+      // Per-head learned sharpness: softplus ensures positive values
+      const sharpness = tf.softplus(this.sharpnessRaw.read()).reshape([1, this.attentionHeads, 1, 1]);
+      scores = scores.mul(sharpness);
 
       // Apply padding mask: set padding key positions to -Infinity so softmax gives them zero weight
       // mask shape: (batch, seq) → (batch, 1, 1, seq) to broadcast over (batch, heads, querySeq, keySeq)
